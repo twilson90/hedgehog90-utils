@@ -1,0 +1,25 @@
+{
+  "name": "@hedgehog90/utils",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "exports": {
+    ".": {
+      "import": "./src/index.js",
+      "require": "./dist/utils.cjs"
+    }
+  },
+  "scripts": {
+    "watch": "set NODE_ENV=production && node build.js watch",
+    "build": "set NODE_ENV=production && node build.js build"
+  },
+  "dependencies": {
+    "pure-md5": "^0.1.14"
+  },
+  "type": "module",
+  "description": "",
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@babel/preset-env": "^7.25.4"
+  }
+}
