@@ -600,6 +600,10 @@ export class Interval {
 
 	update(opts) {
 		Object.assign(this.#options, opts);
+<<<<<<< HEAD
+=======
+		var t1 = this.time_until_next_tick;
+>>>>>>> 988e7760e338ed8304c24e36b578beaa5e164d79
 	}
 
 	async tick(callback_args=null) {

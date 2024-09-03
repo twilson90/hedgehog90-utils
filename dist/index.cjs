@@ -1529,7 +1529,13 @@ var Interval = /*#__PURE__*/function () {
   }, {
     key: "update",
     value: function update(opts) {
+<<<<<<< HEAD:dist/index.cjs
       Object.assign(_classPrivateFieldGet2(_options, this), opts);
+=======
+      this.time_until_next_tick;
+      Object.assign(_classPrivateFieldGet2(_options, this), opts);
+      this.time_until_next_tick;
+>>>>>>> 988e7760e338ed8304c24e36b578beaa5e164d79:dist/src.cjs
     }
   }, {
     key: "tick",
