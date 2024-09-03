@@ -578,6 +578,7 @@ export class Interval {
 	#ticks = 0;
 	#destroyed = false;
 	#last_tick = 0;
+	#timeout;
 
 	/** @param {function():void} callback @param {IntervalOptions} opts */
 	constructor(callback, opts) {
@@ -592,14 +593,15 @@ export class Interval {
 		this.options = options_proxy(this.#options);
 		if (!this.options.immediate) this.#last_tick = Date.now();
 		this.callback = callback;
-		this.#setup_next_tick();
+		
+		if (this.options.immediate) this.tick();
+		else this.next();
 	}
 
 	update(opts) {
 		var t0 = this.time_until_next_tick;
 		Object.assign(this.#options, opts);
 		var t1 = this.time_until_next_tick;
-		if (t1 < t0) this.#setup_next_tick();
 	}
 
 	async tick(callback_args=null) {
@@ -608,21 +610,19 @@ export class Interval {
 		if (!this.#destroyed && ticks == this.#ticks) {
 			this.#last_tick = Date.now();
 			this._current_promise = Promise.resolve(this.callback.apply(this.options.context, callback_args));
-			this.#setup_next_tick();
+			this.next();
 		}
 		return this._current_promise;
 	}
 
-	#setup_next_tick() {
-		var t = this.time_until_next_tick;
-		clearTimeout(this._timeout);
-		if (!t && this.options.immediate) this.tick();
-		else this._timeout = setTimeout(()=>this.tick(), t);
+	async next() {
+		clearTimeout(this.#timeout);
+		this.#timeout = setTimeout(()=>this.tick(), t);
 	}
 
 	destroy() {
 		this.#destroyed = true;
-		clearTimeout(this._timeout);
+		clearTimeout(this.#timeout);
 	}
 }
 
