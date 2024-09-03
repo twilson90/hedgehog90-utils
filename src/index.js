@@ -615,7 +615,7 @@ export class Interval {
 
 	async next() {
 		clearTimeout(this.#timeout);
-		this.#timeout = setTimeout(()=>this.tick(), t);
+		this.#timeout = setTimeout(()=>this.tick(), this.options.interval);
 	}
 
 	destroy() {

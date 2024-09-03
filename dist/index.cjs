@@ -1579,7 +1579,7 @@ var Interval = /*#__PURE__*/function () {
               clearTimeout(_classPrivateFieldGet2(_timeout, this));
               _classPrivateFieldSet2(_timeout, this, setTimeout(function () {
                 return _this8.tick();
-              }, t));
+              }, this.options.interval));
             case 2:
             case "end":
               return _context3.stop();
