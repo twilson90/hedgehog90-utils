@@ -5,7 +5,7 @@
   "exports": {
     ".": {
       "import": "./src/index.js",
-      "require": "./dist/utils.cjs"
+      "require": "./dist/index.cjs"
     }
   },
   "scripts": {
