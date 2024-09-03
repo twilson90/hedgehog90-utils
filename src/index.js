@@ -599,9 +599,7 @@ export class Interval {
 	}
 
 	update(opts) {
-		var t0 = this.time_until_next_tick;
 		Object.assign(this.#options, opts);
-		var t1 = this.time_until_next_tick;
 	}
 
 	async tick(callback_args=null) {

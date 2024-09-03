@@ -1529,9 +1529,7 @@ var Interval = /*#__PURE__*/function () {
   }, {
     key: "update",
     value: function update(opts) {
-      this.time_until_next_tick;
       Object.assign(_classPrivateFieldGet2(_options, this), opts);
-      this.time_until_next_tick;
     }
   }, {
     key: "tick",
@@ -3958,4 +3956,4 @@ exports.try_file_uri_to_path = try_file_uri_to_path;
 exports.uniquify = uniquify;
 exports.websocket_ready = websocket_ready;
 exports.zip = zip;
-//# sourceMappingURL=src.cjs.map
+//# sourceMappingURL=index.cjs.map
