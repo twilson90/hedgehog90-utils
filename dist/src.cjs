@@ -62,9 +62,6 @@ function _classPrivateFieldInitSpec(e, t, a) {
 function _classPrivateFieldSet2(s, a, r) {
   return s.set(_assertClassBrand(s, a), r), r;
 }
-function _classPrivateMethodInitSpec(e, a) {
-  _checkPrivateRedeclaration(e, a), a.add(e);
-}
 function _construct(t, e, r) {
   if (_isNativeReflectConstruct()) return Reflect.construct.apply(null, arguments);
   var o = [null];
@@ -1493,17 +1490,17 @@ var _options = /*#__PURE__*/new WeakMap();
 var _ticks = /*#__PURE__*/new WeakMap();
 var _destroyed = /*#__PURE__*/new WeakMap();
 var _last_tick = /*#__PURE__*/new WeakMap();
-var _Interval_brand = /*#__PURE__*/new WeakSet();
+var _timeout = /*#__PURE__*/new WeakMap();
 var Interval = /*#__PURE__*/function () {
   /** @param {function():void} callback @param {IntervalOptions} opts */
   function Interval(callback, opts) {
     _classCallCheck(this, Interval);
-    _classPrivateMethodInitSpec(this, _Interval_brand);
     /** @type {IntervalOptions} */
     _classPrivateFieldInitSpec(this, _options, void 0);
     _classPrivateFieldInitSpec(this, _ticks, 0);
     _classPrivateFieldInitSpec(this, _destroyed, false);
     _classPrivateFieldInitSpec(this, _last_tick, 0);
+    _classPrivateFieldInitSpec(this, _timeout, void 0);
     if (_typeof(opts) !== "object") opts = {
       interval: opts
     };
@@ -1517,7 +1514,7 @@ var Interval = /*#__PURE__*/function () {
     this.options = options_proxy(_classPrivateFieldGet2(_options, this));
     if (!this.options.immediate) _classPrivateFieldSet2(_last_tick, this, Date.now());
     this.callback = callback;
-    _assertClassBrand(_Interval_brand, this, _setup_next_tick).call(this);
+    if (this.options.immediate) this.tick();else this.next();
   }
   return _createClass(Interval, [{
     key: "time_since_last_tick",
@@ -1532,10 +1529,9 @@ var Interval = /*#__PURE__*/function () {
   }, {
     key: "update",
     value: function update(opts) {
-      var t0 = this.time_until_next_tick;
+      this.time_until_next_tick;
       Object.assign(_classPrivateFieldGet2(_options, this), opts);
-      var t1 = this.time_until_next_tick;
-      if (t1 < t0) _assertClassBrand(_Interval_brand, this, _setup_next_tick).call(this);
+      this.time_until_next_tick;
     }
   }, {
     key: "tick",
@@ -1560,7 +1556,7 @@ var Interval = /*#__PURE__*/function () {
               if (!_classPrivateFieldGet2(_destroyed, this) && ticks == _classPrivateFieldGet2(_ticks, this)) {
                 _classPrivateFieldSet2(_last_tick, this, Date.now());
                 this._current_promise = Promise.resolve(this.callback.apply(this.options.context, callback_args));
-                _assertClassBrand(_Interval_brand, this, _setup_next_tick).call(this);
+                this.next();
               }
               return _context2.abrupt("return", this._current_promise);
             case 7:
@@ -1575,21 +1571,36 @@ var Interval = /*#__PURE__*/function () {
       return tick;
     }()
   }, {
+    key: "next",
+    value: function () {
+      var _next2 = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee2() {
+        var _this8 = this;
+        return _regeneratorRuntime().wrap(function _callee2$(_context3) {
+          while (1) switch (_context3.prev = _context3.next) {
+            case 0:
+              clearTimeout(_classPrivateFieldGet2(_timeout, this));
+              _classPrivateFieldSet2(_timeout, this, setTimeout(function () {
+                return _this8.tick();
+              }, t));
+            case 2:
+            case "end":
+              return _context3.stop();
+          }
+        }, _callee2, this);
+      }));
+      function next() {
+        return _next2.apply(this, arguments);
+      }
+      return next;
+    }()
+  }, {
     key: "destroy",
     value: function destroy() {
       _classPrivateFieldSet2(_destroyed, this, true);
-      clearTimeout(this._timeout);
+      clearTimeout(_classPrivateFieldGet2(_timeout, this));
     }
   }]);
 }();
-function _setup_next_tick() {
-  var _this8 = this;
-  var t = this.time_until_next_tick;
-  clearTimeout(this._timeout);
-  if (!t && this.options.immediate) this.tick();else this._timeout = setTimeout(function () {
-    return _this8.tick();
-  }, t);
-}
 function options_proxy(opts) {
   return new Proxy(opts, {
     get: function get(target, prop, receiver) {
@@ -2046,28 +2057,28 @@ var RangeTree = /*#__PURE__*/function () {
     key: Symbol.iterator,
     value: /*#__PURE__*/_regeneratorRuntime().mark(function value() {
       var next;
-      return _regeneratorRuntime().wrap(function value$(_context3) {
-        while (1) switch (_context3.prev = _context3.next) {
+      return _regeneratorRuntime().wrap(function value$(_context4) {
+        while (1) switch (_context4.prev = _context4.next) {
           case 0:
             next = this._first;
           case 1:
             if (!next) {
-              _context3.next = 8;
+              _context4.next = 8;
               break;
             }
             if (!next) {
-              _context3.next = 5;
+              _context4.next = 5;
               break;
             }
-            _context3.next = 5;
+            _context4.next = 5;
             return _toConsumableArray(next);
           case 5:
             next = next.next;
-            _context3.next = 1;
+            _context4.next = 1;
             break;
           case 8:
           case "end":
-            return _context3.stop();
+            return _context4.stop();
         }
       }, value, this);
     })
@@ -2468,13 +2479,13 @@ function promise_all_object(_x) {
   return _promise_all_object.apply(this, arguments);
 }
 function _promise_all_object() {
-  _promise_all_object = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee2(obj) {
+  _promise_all_object = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee3(obj) {
     var new_obj;
-    return _regeneratorRuntime().wrap(function _callee2$(_context5) {
-      while (1) switch (_context5.prev = _context5.next) {
+    return _regeneratorRuntime().wrap(function _callee3$(_context6) {
+      while (1) switch (_context6.prev = _context6.next) {
         case 0:
           new_obj = {};
-          _context5.next = 3;
+          _context6.next = 3;
           return Promise.all(Object.entries(obj).map(function (_ref8) {
             var _ref9 = _slicedToArray(_ref8, 2),
               k = _ref9[0],
@@ -2484,12 +2495,12 @@ function _promise_all_object() {
             });
           }));
         case 3:
-          return _context5.abrupt("return", new_obj);
+          return _context6.abrupt("return", new_obj);
         case 4:
         case "end":
-          return _context5.stop();
+          return _context6.stop();
       }
-    }, _callee2);
+    }, _callee3);
   }));
   return _promise_all_object.apply(this, arguments);
 }
@@ -2715,45 +2726,45 @@ function array_unique(arr) {
 }
 function iterate_unique(arr) {
   var seen, _iterator16, _step16, a;
-  return _regeneratorRuntime().wrap(function iterate_unique$(_context4) {
-    while (1) switch (_context4.prev = _context4.next) {
+  return _regeneratorRuntime().wrap(function iterate_unique$(_context5) {
+    while (1) switch (_context5.prev = _context5.next) {
       case 0:
         seen = new Set();
         _iterator16 = _createForOfIteratorHelper(arr);
-        _context4.prev = 2;
+        _context5.prev = 2;
         _iterator16.s();
       case 4:
         if ((_step16 = _iterator16.n()).done) {
-          _context4.next = 13;
+          _context5.next = 13;
           break;
         }
         a = _step16.value;
         if (!seen.has(a)) {
-          _context4.next = 8;
+          _context5.next = 8;
           break;
         }
-        return _context4.abrupt("continue", 11);
+        return _context5.abrupt("continue", 11);
       case 8:
         seen.add(a);
-        _context4.next = 11;
+        _context5.next = 11;
         return a;
       case 11:
-        _context4.next = 4;
+        _context5.next = 4;
         break;
       case 13:
-        _context4.next = 18;
+        _context5.next = 18;
         break;
       case 15:
-        _context4.prev = 15;
-        _context4.t0 = _context4["catch"](2);
-        _iterator16.e(_context4.t0);
+        _context5.prev = 15;
+        _context5.t0 = _context5["catch"](2);
+        _iterator16.e(_context5.t0);
       case 18:
-        _context4.prev = 18;
+        _context5.prev = 18;
         _iterator16.f();
-        return _context4.finish(18);
+        return _context5.finish(18);
       case 21:
       case "end":
-        return _context4.stop();
+        return _context5.stop();
     }
   }, _marked, null, [[2, 15, 18, 21]]);
 }
@@ -3188,7 +3199,7 @@ function get_property_keys(obj) {
 function flatten_tree(o, children_cb) {
   /** @type {T[]} */
   var result = [];
-  var _next2 = function next(o) {
+  var _next3 = function next(o) {
     result.push(o);
     var children = children_cb.apply(o, [o]);
     if (!children || !(Symbol.iterator in children)) return;
@@ -3197,7 +3208,7 @@ function flatten_tree(o, children_cb) {
     try {
       for (_iterator21.s(); !(_step21 = _iterator21.n()).done;) {
         var c = _step21.value;
-        _next2(c);
+        _next3(c);
       }
     } catch (err) {
       _iterator21.e(err);
@@ -3205,7 +3216,7 @@ function flatten_tree(o, children_cb) {
       _iterator21.f();
     }
   };
-  _next2(o);
+  _next3(o);
   return result;
 }
 /** @template T @param {T} obj @param {Function(any):any} replacer @return {T} */
@@ -3491,38 +3502,38 @@ function replace_async(_x2, _x3, _x4) {
   return _replace_async.apply(this, arguments);
 }
 function _replace_async() {
-  _replace_async = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee3(str, re, callback) {
+  _replace_async = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee4(str, re, callback) {
     var parts, i, m, args, strings;
-    return _regeneratorRuntime().wrap(function _callee3$(_context6) {
-      while (1) switch (_context6.prev = _context6.next) {
+    return _regeneratorRuntime().wrap(function _callee4$(_context7) {
+      while (1) switch (_context7.prev = _context7.next) {
         case 0:
           str = String(str);
           parts = [], i = 0;
           if (!(re instanceof RegExp)) {
-            _context6.next = 15;
+            _context7.next = 15;
             break;
           }
           if (re.global) re.lastIndex = i;
         case 4:
           if (!(m = re.exec(str))) {
-            _context6.next = 13;
+            _context7.next = 13;
             break;
           }
           args = m.concat([m.index, m.input]);
           parts.push(str.slice(i, m.index), callback.apply(null, args));
           i = re.lastIndex;
           if (re.global) {
-            _context6.next = 10;
+            _context7.next = 10;
             break;
           }
-          return _context6.abrupt("break", 13);
+          return _context7.abrupt("break", 13);
         case 10:
           // for non-global regexes only take the first match
           if (m[0].length == 0) re.lastIndex++;
-          _context6.next = 4;
+          _context7.next = 4;
           break;
         case 13:
-          _context6.next = 19;
+          _context7.next = 19;
           break;
         case 15:
           re = String(re);
@@ -3531,16 +3542,16 @@ function _replace_async() {
           i += re.length;
         case 19:
           parts.push(str.slice(i));
-          _context6.next = 22;
+          _context7.next = 22;
           return Promise.all(parts);
         case 22:
-          strings = _context6.sent;
-          return _context6.abrupt("return", strings.join(""));
+          strings = _context7.sent;
+          return _context7.abrupt("return", strings.join(""));
         case 24:
         case "end":
-          return _context6.stop();
+          return _context7.stop();
       }
-    }, _callee3);
+    }, _callee4);
   }));
   return _replace_async.apply(this, arguments);
 }
