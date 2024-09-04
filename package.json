@@ -4,7 +4,7 @@
   "main": "src/index.js",
   "exports": {
     "import": "./src/index.js",
-    "require": "./dist/index.cjs"
+    "require": "./dist/utils.cjs"
   },
   "scripts": {
     "watch": "set NODE_ENV=production && node build.js watch",
