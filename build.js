@@ -6,8 +6,8 @@ export function watch() {
 
 export async function build() {
   await tools.compile("src/index.js", {
-    name: "utils",
     js: {
+      name: "utils",
       outputs: [
         { format: "es" },
         { format: "commonjs" },
