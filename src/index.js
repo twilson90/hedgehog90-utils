@@ -195,7 +195,7 @@ export class StopWatch extends EventEmitter {
 	}
 }
 
-class Diff {
+export class Diff {
 	constructor(old_value, new_value) {
 		if (old_value === new_value) this.type = 0;
 		if (old_value === undefined) this.type = Diff.CREATED;
@@ -2202,10 +2202,6 @@ export function build_url(...args) {
 	return url;
 }
 
-export function eval_string(str, ctx) {
-	var f = function(m) { return eval("this."+m); }
-	return str.replace(/\{\{\s*(.+?)\s*\}\}/g, (_,m)=>f.call(ctx, [m]));
-}
 export function path_to_file_uri(path) {
 	if (!path.startsWith("/")) path = "/"+path;
 	return new URL("file://"+path).toString();
