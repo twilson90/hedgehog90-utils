@@ -5,7 +5,8 @@
 	"module": "./dist/utils.mjs",
   "exports": {
     ".": {
-      "import": "./src/index.js",
+      "types": "./src/index.js",
+      "import": "./dist/index.mjs",
       "require": "./dist/utils.cjs"
     }
   },
