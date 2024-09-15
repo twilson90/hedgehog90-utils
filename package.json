@@ -4,10 +4,11 @@
   "main": "./src/index.js",
   "exports": {
     ".": {
-      "import": "./dist/utils.mjs",
+      "import": "./src/index.js",
       "require": "./dist/utils.cjs"
     }
   },
+	"module": "./dist/utils.mjs",
   "scripts": {
     "watch": "set NODE_ENV=production && set NODE_OPTIONS=--no-warnings=ExperimentalWarning && rollup -c -w",
     "build": "set NODE_ENV=production && set NODE_OPTIONS=--no-warnings=ExperimentalWarning && rollup -c"
