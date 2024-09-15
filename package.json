@@ -1,12 +1,12 @@
 {
   "name": "@hedgehog90/utils",
   "version": "1.0.0",
+  "type": "module",
   "main": "./src/index.js",
-	"module": "./dist/utils.mjs",
   "exports": {
     ".": {
       "types": "./src/index.js",
-      "import": "./dist/index.mjs",
+      "import": "./dist/utils.mjs",
       "require": "./dist/utils.cjs"
     }
   },
@@ -14,7 +14,6 @@
     "watch": "set NODE_ENV=production && set NODE_OPTIONS=--no-warnings=ExperimentalWarning && rollup -c -w",
     "build": "set NODE_ENV=production && set NODE_OPTIONS=--no-warnings=ExperimentalWarning && rollup -c"
   },
-  "type": "module",
   "description": "",
   "author": "",
   "license": "ISC",
