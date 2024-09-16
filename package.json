@@ -3,16 +3,16 @@
   "version": "1.0.0",
   "type": "module",
   "main": "./src/index.js",
+  "types": "./src/index.js",
   "exports": {
     ".": {
-      "types": "./src/index.js",
       "import": "./dist/utils.mjs",
       "require": "./dist/utils.cjs"
     }
   },
   "scripts": {
-    "watch": "set NODE_ENV=production && set NODE_OPTIONS=--no-warnings=ExperimentalWarning && rollup -c -w",
-    "build": "set NODE_ENV=production && set NODE_OPTIONS=--no-warnings=ExperimentalWarning && rollup -c"
+    "watch": "set NODE_ENV=production && rollup -c -w",
+    "build": "set NODE_ENV=production && rollup -c"
   },
   "description": "",
   "author": "",
