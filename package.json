@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "type": "module",
   "main": "./src/index.js",
-  "types": "./src/index.js",
   "exports": {
     ".": {
+      "types": "./src/index.js",
       "import": "./dist/utils.mjs",
       "require": "./dist/utils.cjs"
     }
