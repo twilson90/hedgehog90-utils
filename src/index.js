@@ -2327,8 +2327,6 @@ export function deferred() {
 	return prom;
 }
 
-export { md5 }
-
 export function fix_url(_url) {
   _url = String(_url).trim();
 	let url;
@@ -2344,3 +2342,5 @@ export function fix_url(_url) {
   }
 	return url.toString();
 }
+
+export { md5 }
