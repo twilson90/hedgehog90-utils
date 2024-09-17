@@ -2,12 +2,14 @@
   "name": "@hedgehog90/utils",
   "version": "1.0.0",
   "type": "module",
-  "main": "./src/index.js",
+  "source": "./src/index.js",
+  "main": "./dist/utils.cjs",
+  "module": "./dist/utils.mjs",
   "exports": {
     ".": {
       "types": "./src/index.js",
-      "import": "./dist/utils.mjs",
-      "require": "./dist/utils.cjs"
+      "require": "./dist/utils.cjs",
+      "import": "./dist/utils.mjs"
     }
   },
   "scripts": {
@@ -24,8 +26,10 @@
     "@rollup/plugin-babel": "^6.0.4",
     "@rollup/plugin-commonjs": "^26.0.1",
     "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-typescript": "^11.1.6",
     "babel-plugin-polyfill-corejs3": "^0.10.6",
-    "core-js": "^3.38.1"
+    "core-js": "^3.38.1",
+    "tslib": "^2.7.0"
   },
   "dependencies": {
     "pure-md5": "^0.1.14"
