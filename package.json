@@ -13,7 +13,8 @@
     "./dom": {
       "types": "./src/dom.js",
       "import": "./dist/dom.mjs"
-    }
+    },
+    "./dom/style.css": "./dist/dom.css"
   },
   "scripts": {
     "watch": "set NODE_ENV=production && rollup -c -w",
