@@ -2,14 +2,17 @@
   "name": "@hedgehog90/utils",
   "version": "1.0.0",
   "type": "module",
-  "source": "./src/index.js",
   "main": "./dist/utils.cjs",
   "module": "./dist/utils.mjs",
   "exports": {
     ".": {
-      "types": "./src/index.js",
+      "types": "./src/utils.js",
       "require": "./dist/utils.cjs",
       "import": "./dist/utils.mjs"
+    },
+    "./dom": {
+      "types": "./src/dom.js",
+      "import": "./dist/dom.mjs"
     }
   },
   "scripts": {
@@ -28,7 +31,14 @@
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-typescript": "^11.1.6",
     "babel-plugin-polyfill-corejs3": "^0.10.6",
+    "rollup-plugin-postcss": "^4.0.2",
+    "rollup-plugin-replace": "^2.2.0",
+    "rollup-plugin-sass": "^1.13.2",
     "core-js": "^3.38.1",
+    "js-cookie": "^3.0.5",
+    "overlayscrollbars": "^2.10.0",
+    "resize-observer-polyfill": "^1.5.1",
+    "tippy.js": "^6.3.7",
     "tslib": "^2.7.0"
   },
   "dependencies": {
