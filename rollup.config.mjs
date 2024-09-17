@@ -4,6 +4,7 @@ import typescript from "@rollup/plugin-typescript";
 import babel from '@rollup/plugin-babel';
 import pkg from './package.json' with { type: "json" };
 
+
 export default [
   {
     input: pkg.source,
