@@ -195,7 +195,7 @@ export class StopWatch extends EventEmitter {
 	}
 }
 
-class Diff {
+export class Diff {
 	constructor(old_value, new_value) {
 		if (old_value === new_value) this.type = 0;
 		if (old_value === undefined) this.type = Diff.CREATED;
@@ -578,6 +578,7 @@ export class Interval {
 	#ticks = 0;
 	#destroyed = false;
 	#last_tick = 0;
+	#timeout;
 
 	/** @param {function():void} callback @param {IntervalOptions} opts */
 	constructor(callback, opts) {
@@ -592,14 +593,13 @@ export class Interval {
 		this.options = options_proxy(this.#options);
 		if (!this.options.immediate) this.#last_tick = Date.now();
 		this.callback = callback;
-		this.#setup_next_tick();
+		
+		if (this.options.immediate) this.tick();
+		else this.next();
 	}
 
 	update(opts) {
-		var t0 = this.time_until_next_tick;
 		Object.assign(this.#options, opts);
-		var t1 = this.time_until_next_tick;
-		if (t1 < t0) this.#setup_next_tick();
 	}
 
 	async tick(callback_args=null) {
@@ -608,21 +608,19 @@ export class Interval {
 		if (!this.#destroyed && ticks == this.#ticks) {
 			this.#last_tick = Date.now();
 			this._current_promise = Promise.resolve(this.callback.apply(this.options.context, callback_args));
-			this.#setup_next_tick();
+			this.next();
 		}
 		return this._current_promise;
 	}
 
-	#setup_next_tick() {
-		var t = this.time_until_next_tick;
-		clearTimeout(this._timeout);
-		if (!t && this.options.immediate) this.tick();
-		else this._timeout = setTimeout(()=>this.tick(), t);
+	async next() {
+		clearTimeout(this.#timeout);
+		this.#timeout = setTimeout(()=>this.tick(), this.options.interval);
 	}
 
 	destroy() {
 		this.#destroyed = true;
-		clearTimeout(this._timeout);
+		clearTimeout(this.#timeout);
 	}
 }
 
@@ -2204,10 +2202,6 @@ export function build_url(...args) {
 	return url;
 }
 
-export function eval_string(str, ctx) {
-	var f = function(m) { return eval("this."+m); }
-	return str.replace(/\{\{\s*(.+?)\s*\}\}/g, (_,m)=>f.call(ctx, [m]));
-}
 export function path_to_file_uri(path) {
 	if (!path.startsWith("/")) path = "/"+path;
 	return new URL("file://"+path).toString();

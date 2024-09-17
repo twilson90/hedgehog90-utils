@@ -1,25 +1,37 @@
 {
   "name": "@hedgehog90/utils",
   "version": "1.0.0",
-  "main": "src/index.js",
+  "type": "module",
+  "source": "./src/index.js",
+  "main": "./dist/utils.cjs",
+  "module": "./dist/utils.mjs",
   "exports": {
     ".": {
-      "import": "./src/index.js",
-      "require": "./dist/utils.cjs"
+      "types": "./src/index.js",
+      "require": "./dist/utils.cjs",
+      "import": "./dist/utils.mjs"
     }
   },
   "scripts": {
-    "watch": "set NODE_ENV=production && node build.js watch",
-    "build": "set NODE_ENV=production && node build.js build"
+    "watch": "set NODE_ENV=production && rollup -c -w",
+    "build": "set NODE_ENV=production && rollup -c"
   },
-  "dependencies": {
-    "pure-md5": "^0.1.14"
-  },
-  "type": "module",
   "description": "",
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@babel/preset-env": "^7.25.4"
+    "@babel/plugin-transform-runtime": "^7.25.4",
+    "@babel/preset-env": "^7.25.4",
+    "@babel/runtime-corejs3": "^7.25.6",
+    "@rollup/plugin-babel": "^6.0.4",
+    "@rollup/plugin-commonjs": "^26.0.1",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-typescript": "^11.1.6",
+    "babel-plugin-polyfill-corejs3": "^0.10.6",
+    "core-js": "^3.38.1",
+    "tslib": "^2.7.0"
+  },
+  "dependencies": {
+    "pure-md5": "^0.1.14"
   }
 }
