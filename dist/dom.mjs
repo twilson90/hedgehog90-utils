@@ -10969,9 +10969,6 @@ UI.Tooltip = /*#__PURE__*/function () {
     this._tippy = tippy(elem, {
       allowHTML: true,
       zIndex: 99999
-      /* onShow: ()=>{
-          debugger;
-      } */
       // appendTo: root,
     });
     this.elem = elem;

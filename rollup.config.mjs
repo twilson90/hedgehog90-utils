@@ -4,7 +4,7 @@ import sass from 'rollup-plugin-sass';
 import postcss from "rollup-plugin-postcss";
 import babel from '@rollup/plugin-babel';
 import replace from 'rollup-plugin-replace'
-import pkg from './package.json' with { type: "json" };
+// import pkg from './package.json' with { type: "json" };
 
 export default [
   {
