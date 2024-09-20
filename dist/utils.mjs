@@ -1341,20 +1341,6 @@ var Observer = function () {
     var observer = Observer.get_observer(proxy);
     if (observer) observer.destroy();
   };
-  /* Observer.apply_change = function(c, target) {
-  	var value_name = c.path[c.path.length-1];
-  	for (var i = 0; i < c.path.length-1; i++) {
-  		var p = c.path[i];
-  		if (target[p] === undefined) target[p] = {};
-  		target = target[p];
-  	}
-  	var value = c.new_value;
-  	if (Observer.is_proxy(value)) value = deep_copy(value);
-  	if (c.old_value != null && value !== null && typeof value === "object" && !Array.isArray(value)) {
-  		value.__RESET__ = 1;
-  	}
-  	target[value_name] = (Observer.is_proxy(value)) ? deep_copy(value) : value;
-  } */
   Observer.flatten_changes = function (changes) {
     var result = {};
     var _iterator6 = _createForOfIteratorHelper(changes),
