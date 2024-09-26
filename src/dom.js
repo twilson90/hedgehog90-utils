@@ -384,83 +384,70 @@ class AutoSizeController extends utils.EventEmitter {
 }
 // var LocalStorageDeleted = Symbol("LocalStorageDeleted");
 class LocalStorageBucket extends utils.EventEmitter
-{
-    get data() { return Object.assign({}, this.defaults, this._data) }
+{   
+    get $() { return this.data; }
+    get data() { return Object.assign({}, this.defaults, this.#data) }
     get keys() { return Object.keys(this.data); }
-    get defaults() { return this._defaults; }
+    get defaults() { return this.#defaults; }
+
+    #name;
+    #data = {};
+    #defaults;
+    #last_data_hash;
+    #interval;
     
     constructor(name, defaults) {
         super();
-        this.save = utils.debounce(this._save, 0);
-
-        this._data = {};
-        this._name = name;
-        this._defaults = defaults ? utils.deep_copy(defaults) : {};
-
-        this._interval = setInterval(()=>{
-            // in case it is altered in another window.
-            var data_string = localStorage.getItem(this._name);
-                if (this._last_data_string !== data_string) {
-                var data = JSON.parse(data_string);
-                for (var k in this._defaults) {
-                    var v = (data && k in data) ? data[k] : this._defaults[k];
-                    this.set(k, v);
-                }
-            }
-        }, 1000);
+        this.save = utils.debounce(this.#save, 0);
+        this.#name = name;
+        this.#defaults = defaults ? utils.deep_copy(defaults) : {};
+        // in case it is altered in another window.
+        this.#interval = setInterval(()=>this.load(), 2000);
+        this.load();
     }
     get(k) {
-        return (this._data[k] == null) ? this._defaults[k] : this._data[k];
+        return (k in this.#data) ? this.#data[k] : this.#defaults[k];
     }
-    set(k, value) {
-        var hash = JSON.stringify(value);
-        if (hash === JSON.stringify(this._data[k])) return;
-        if (k in this._defaults && hash === JSON.stringify(this._defaults[k])) {
-            delete this._data[k];
-        } else {
-            this._data[k] = utils.deep_copy(value);
-        }
-        this._trigger_change(k);
+    set(k, new_value) {
+        var new_hash = JSON.stringify(new_value);
+        var old_value = this.#data[k];
+        var old_hash = JSON.stringify(old_value);
+        var default_hash = JSON.stringify(this.#defaults[k]);
+        if (new_hash === old_hash) return;
+        if (new_hash === default_hash) delete this.#data[k];
+        else this.#data[k] = new_value;
+        this.emit("change", {name:k, old_value, new_value});
         this.save();
     }
-    delete(k) {
-        if (this._data[k] === undefined) return;
-        delete this._data[k];
-        this._trigger_change(k);
-        this.save();
+    unset(k) {
+        if (!(k in this.#data)) return;
+        this.set(k, this.#defaults[k]);
     }
     toggle(k) {
         this.set(k, !this.get(k));
     }
-    load() {
-        var new_values = {};
+    load(reset=false) {
+        var new_values;
         try {
-            Object.assign(new_values, JSON.parse(localStorage.getItem(this._name)));
-        } catch {}
-        var old_values = this.data;
-        this._data = new_values;
-        new_values = this.data;
+            new_values = JSON.parse(localStorage.getItem(this.#name));
+        } catch {
+            return;
+        }
+        if (reset) utils.clear(this.#data);
         for (var k in new_values) {
-            if (new_values[k] !== old_values[k] || !this._first) this._trigger_change(k);
+            if (k in this.#defaults) {
+                this.set(k, new_values[k]);
+            } else {
+                console.warn(`LocalStorageBucket '${this.#name}' key '${k}' not defined in defaults.`);
+            }
         }
-        for (var k in old_values) {
-            if (!(k in new_values)) this._trigger_change(k);
-        }
-        this._first = true;
-        this.emit("load");
     }
-
-    _trigger_change(k) {
-        this.emit("change", {name:k, value:this.get(k)});
+    #save() {
+        this.#last_data_hash = JSON.stringify(this.#data);
+        localStorage.setItem(this.#name, this.#last_data_hash);
     }
-
-    _save() {
-        this._last_data_string = JSON.stringify(this._data);
-        localStorage.setItem(this._name, this._last_data_string);
-    }
-
     destroy() {
-        clearInterval(this._interval);
+        clearInterval(this.#interval);
     }
 }
 
@@ -484,16 +471,17 @@ class WebSocket2 extends utils.EventEmitter
     }
 
     request(data, timeout){
-        return utils.promise_timeout(new Promise((resolve,reject) => {
-            this._requests++;
-            this._request_ids[this._requests] = (response) => {
+        return new Promise((resolve,reject) => {
+            var rid = ++this._requests;
+            this._request_ids[rid] = (response) => {
                 if (response.error) reject(response.error.message);
                 else resolve(response.result);
             };
             this.send(Object.assign({
-                __id__: this._requests,
+                __id__: rid,
             }, data));
-        }), timeout);
+            setTimeout(()=>reject(`WebSocket2 request ${rid} timed out`), timeout)
+        }).catch((e)=>console.error(e));
     }
 
     async send(data) {
@@ -527,7 +515,6 @@ class WebSocket2 extends utils.EventEmitter
             open = true;
             clearTimeout(this._reconnect_timeout);
             this.emit("open", e);
-            console.log("Connection open.")
         });
         this.ws.addEventListener("message", (e)=>{
             this.emit("message", e);
@@ -890,7 +877,8 @@ UI.closest = function(elem, type=UI) {
     return o;
 } */
 
-var handle_els = function*(o){
+/** @return {Iterable<HTMLElement>} */
+var handle_els = function*(o) {
     if (Array.isArray(o)) for (var c of o) for (var c2 of handle_els(c)) yield c2;
     else if (o instanceof UI) yield o.elem;
     else if (typeof o === "string") for (var c of $(o)) yield c;
@@ -940,10 +928,9 @@ UI.Label = class Label extends UI {
 }
 
 UI.Link = class Link extends UI {
-    constructor(href, content, settings) {
+    constructor(content, settings) {
         var el = $(`<a>`)[0];
         el.innerHTML = content;
-        el.href = href;
         super(el, {...settings});
         this.on("update", ()=>{
             if ("href" in this.settings) this.elem.href = this.get_setting("href");
@@ -2572,12 +2559,12 @@ export function debounce_next_frame(func) {
     };
     return debounced;
 }
-export function uuidv4() {
+export function uuid4() {
     return `${1e7}-${1e3}-${4e3}-${8e3}-${1e11}`.replace(/[018]/g, c=>(c^crypto.getRandomValues(new Uint8Array(1))[0]&15>>c/4).toString(16));
 }
 
 export function uuidb64() {
-    return btoa(uuidv4());
+    return btoa(uuid4());
 }
 // ignores text elements and whitespace
 /** @param {Element} dst @param {Element} src */
@@ -2724,14 +2711,13 @@ export class WindowCommunicator {
     request(window, request, data, timeout = 10000) {
         var id = ++this.id;
         var payload = {event:"request", request, data, id};
-        return utils.promise_timeout(new Promise((resolve)=>{
-            this.requests[id] = (response) => {
+        return new Promise((resolve, reject)=>{
+            this.requests[id] = (response)=>{
                 resolve(response);
             };
             window.postMessage(payload, "*");
-        }), timeout).catch((e)=>{
-            console.warn("timed out", payload);
-        });
+            setTimeout(()=>reject(`WindowCommunicator request ${id} timed out`), timeout);
+        }).catch((e)=>console.error(e));
     }
 
     destroy() {

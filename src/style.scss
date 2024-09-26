@@ -118,9 +118,8 @@ label.uis {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--gap);
-	&.flex>* { flex:1; }
-	&>.uis.button {
-		// height: auto;
+	&.flex>* {
+		flex:1;
 	}
 }
 .uis.row {

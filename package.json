@@ -40,9 +40,7 @@
     "overlayscrollbars": "^2.10.0",
     "resize-observer-polyfill": "^1.5.1",
     "tippy.js": "^6.3.7",
-    "tslib": "^2.7.0"
-  },
-  "dependencies": {
+    "tslib": "^2.7.0",
     "pure-md5": "^0.1.14"
   }
 }

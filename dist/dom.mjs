@@ -7656,17 +7656,6 @@ Rectangle.intersection = function () {
   })));
   return new Rectangle(x, y, right - x, bottom - y);
 };
-var TimeoutError = /*#__PURE__*/function (_Error2) {
-  function TimeoutError(message) {
-    var _this7;
-    _classCallCheck$1(this, TimeoutError);
-    _this7 = _callSuper$1(this, TimeoutError, [message]);
-    _this7.name = "TimeoutError";
-    return _this7;
-  }
-  _inherits$1(TimeoutError, _Error2);
-  return _createClass$1(TimeoutError);
-}(/*#__PURE__*/_wrapNativeSuper(Error));
 var Color = /*#__PURE__*/function () {
   function Color() {
     for (var _len6 = arguments.length, components = new Array(_len6), _key6 = 0; _key6 < _len6; _key6++) {
@@ -7960,17 +7949,6 @@ function debounce(func) {
   };
   return debounced;
 }
-function promise_timeout(promise) {
-  var ms = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 10000;
-  if (typeof promise === "function") promise = new Promise(promise);
-  if (!ms || ms <= 0) return promise;
-  return new Promise(function (resolve, reject) {
-    setTimeout(function () {
-      reject(new TimeoutError("Timed out in ".concat(ms, "ms.")));
-    }, ms);
-    promise.then(resolve)["catch"](reject);
-  });
-}
 function timespan_str_to_seconds(str) {
   var format = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : "hh:mm:ss";
   return timespan_str_to_ms(str, format) / 1000;
@@ -8144,11 +8122,6 @@ function nearest(num) {
 }
 
 var _marked = /*#__PURE__*/_regeneratorRuntime().mark(find);
-function _classPrivateFieldInitSpec(e, t, a) { _checkPrivateRedeclaration(e, t), t.set(e, a); }
-function _checkPrivateRedeclaration(e, t) { if (t.has(e)) throw new TypeError("Cannot initialize the same private elements twice on an object"); }
-function _classPrivateFieldGet(s, a) { return s.get(_assertClassBrand(s, a)); }
-function _classPrivateFieldSet(s, a, r) { return s.set(_assertClassBrand(s, a), r), r; }
-function _assertClassBrand(e, t, n) { if ("function" == typeof e ? e === t : e.has(t)) return arguments.length < 3 ? t : n; throw new TypeError("Private element is not present on this object"); }
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
 function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
 function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
@@ -8170,6 +8143,12 @@ function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object
 function _regeneratorRuntime() { /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/facebook/regenerator/blob/main/LICENSE */ _regeneratorRuntime = function _regeneratorRuntime() { return e; }; var t, e = {}, r = Object.prototype, n = r.hasOwnProperty, o = Object.defineProperty || function (t, e, r) { t[e] = r.value; }, i = "function" == typeof Symbol ? Symbol : {}, a = i.iterator || "@@iterator", c = i.asyncIterator || "@@asyncIterator", u = i.toStringTag || "@@toStringTag"; function define(t, e, r) { return Object.defineProperty(t, e, { value: r, enumerable: !0, configurable: !0, writable: !0 }), t[e]; } try { define({}, ""); } catch (t) { define = function define(t, e, r) { return t[e] = r; }; } function wrap(t, e, r, n) { var i = e && e.prototype instanceof Generator ? e : Generator, a = Object.create(i.prototype), c = new Context(n || []); return o(a, "_invoke", { value: makeInvokeMethod(t, r, c) }), a; } function tryCatch(t, e, r) { try { return { type: "normal", arg: t.call(e, r) }; } catch (t) { return { type: "throw", arg: t }; } } e.wrap = wrap; var h = "suspendedStart", l = "suspendedYield", f = "executing", s = "completed", y = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} var p = {}; define(p, a, function () { return this; }); var d = Object.getPrototypeOf, v = d && d(d(values([]))); v && v !== r && n.call(v, a) && (p = v); var g = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(p); function defineIteratorMethods(t) { ["next", "throw", "return"].forEach(function (e) { define(t, e, function (t) { return this._invoke(e, t); }); }); } function AsyncIterator(t, e) { function invoke(r, o, i, a) { var c = tryCatch(t[r], t, o); if ("throw" !== c.type) { var u = c.arg, h = u.value; return h && "object" == _typeof(h) && n.call(h, "__await") ? e.resolve(h.__await).then(function (t) { invoke("next", t, i, a); }, function (t) { invoke("throw", t, i, a); }) : e.resolve(h).then(function (t) { u.value = t, i(u); }, function (t) { return invoke("throw", t, i, a); }); } a(c.arg); } var r; o(this, "_invoke", { value: function value(t, n) { function callInvokeWithMethodAndArg() { return new e(function (e, r) { invoke(t, n, e, r); }); } return r = r ? r.then(callInvokeWithMethodAndArg, callInvokeWithMethodAndArg) : callInvokeWithMethodAndArg(); } }); } function makeInvokeMethod(e, r, n) { var o = h; return function (i, a) { if (o === f) throw Error("Generator is already running"); if (o === s) { if ("throw" === i) throw a; return { value: t, done: !0 }; } for (n.method = i, n.arg = a;;) { var c = n.delegate; if (c) { var u = maybeInvokeDelegate(c, n); if (u) { if (u === y) continue; return u; } } if ("next" === n.method) n.sent = n._sent = n.arg;else if ("throw" === n.method) { if (o === h) throw o = s, n.arg; n.dispatchException(n.arg); } else "return" === n.method && n.abrupt("return", n.arg); o = f; var p = tryCatch(e, r, n); if ("normal" === p.type) { if (o = n.done ? s : l, p.arg === y) continue; return { value: p.arg, done: n.done }; } "throw" === p.type && (o = s, n.method = "throw", n.arg = p.arg); } }; } function maybeInvokeDelegate(e, r) { var n = r.method, o = e.iterator[n]; if (o === t) return r.delegate = null, "throw" === n && e.iterator["return"] && (r.method = "return", r.arg = t, maybeInvokeDelegate(e, r), "throw" === r.method) || "return" !== n && (r.method = "throw", r.arg = new TypeError("The iterator does not provide a '" + n + "' method")), y; var i = tryCatch(o, e.iterator, r.arg); if ("throw" === i.type) return r.method = "throw", r.arg = i.arg, r.delegate = null, y; var a = i.arg; return a ? a.done ? (r[e.resultName] = a.value, r.next = e.nextLoc, "return" !== r.method && (r.method = "next", r.arg = t), r.delegate = null, y) : a : (r.method = "throw", r.arg = new TypeError("iterator result is not an object"), r.delegate = null, y); } function pushTryEntry(t) { var e = { tryLoc: t[0] }; 1 in t && (e.catchLoc = t[1]), 2 in t && (e.finallyLoc = t[2], e.afterLoc = t[3]), this.tryEntries.push(e); } function resetTryEntry(t) { var e = t.completion || {}; e.type = "normal", delete e.arg, t.completion = e; } function Context(t) { this.tryEntries = [{ tryLoc: "root" }], t.forEach(pushTryEntry, this), this.reset(!0); } function values(e) { if (e || "" === e) { var r = e[a]; if (r) return r.call(e); if ("function" == typeof e.next) return e; if (!isNaN(e.length)) { var o = -1, i = function next() { for (; ++o < e.length;) if (n.call(e, o)) return next.value = e[o], next.done = !1, next; return next.value = t, next.done = !0, next; }; return i.next = i; } } throw new TypeError(_typeof(e) + " is not iterable"); } return GeneratorFunction.prototype = GeneratorFunctionPrototype, o(g, "constructor", { value: GeneratorFunctionPrototype, configurable: !0 }), o(GeneratorFunctionPrototype, "constructor", { value: GeneratorFunction, configurable: !0 }), GeneratorFunction.displayName = define(GeneratorFunctionPrototype, u, "GeneratorFunction"), e.isGeneratorFunction = function (t) { var e = "function" == typeof t && t.constructor; return !!e && (e === GeneratorFunction || "GeneratorFunction" === (e.displayName || e.name)); }, e.mark = function (t) { return Object.setPrototypeOf ? Object.setPrototypeOf(t, GeneratorFunctionPrototype) : (t.__proto__ = GeneratorFunctionPrototype, define(t, u, "GeneratorFunction")), t.prototype = Object.create(g), t; }, e.awrap = function (t) { return { __await: t }; }, defineIteratorMethods(AsyncIterator.prototype), define(AsyncIterator.prototype, c, function () { return this; }), e.AsyncIterator = AsyncIterator, e.async = function (t, r, n, o, i) { void 0 === i && (i = Promise); var a = new AsyncIterator(wrap(t, r, n, o), i); return e.isGeneratorFunction(r) ? a : a.next().then(function (t) { return t.done ? t.value : a.next(); }); }, defineIteratorMethods(g), define(g, u, "Generator"), define(g, a, function () { return this; }), define(g, "toString", function () { return "[object Generator]"; }), e.keys = function (t) { var e = Object(t), r = []; for (var n in e) r.push(n); return r.reverse(), function next() { for (; r.length;) { var t = r.pop(); if (t in e) return next.value = t, next.done = !1, next; } return next.done = !0, next; }; }, e.values = values, Context.prototype = { constructor: Context, reset: function reset(e) { if (this.prev = 0, this.next = 0, this.sent = this._sent = t, this.done = !1, this.delegate = null, this.method = "next", this.arg = t, this.tryEntries.forEach(resetTryEntry), !e) for (var r in this) "t" === r.charAt(0) && n.call(this, r) && !isNaN(+r.slice(1)) && (this[r] = t); }, stop: function stop() { this.done = !0; var t = this.tryEntries[0].completion; if ("throw" === t.type) throw t.arg; return this.rval; }, dispatchException: function dispatchException(e) { if (this.done) throw e; var r = this; function handle(n, o) { return a.type = "throw", a.arg = e, r.next = n, o && (r.method = "next", r.arg = t), !!o; } for (var o = this.tryEntries.length - 1; o >= 0; --o) { var i = this.tryEntries[o], a = i.completion; if ("root" === i.tryLoc) return handle("end"); if (i.tryLoc <= this.prev) { var c = n.call(i, "catchLoc"), u = n.call(i, "finallyLoc"); if (c && u) { if (this.prev < i.catchLoc) return handle(i.catchLoc, !0); if (this.prev < i.finallyLoc) return handle(i.finallyLoc); } else if (c) { if (this.prev < i.catchLoc) return handle(i.catchLoc, !0); } else { if (!u) throw Error("try statement without catch or finally"); if (this.prev < i.finallyLoc) return handle(i.finallyLoc); } } } }, abrupt: function abrupt(t, e) { for (var r = this.tryEntries.length - 1; r >= 0; --r) { var o = this.tryEntries[r]; if (o.tryLoc <= this.prev && n.call(o, "finallyLoc") && this.prev < o.finallyLoc) { var i = o; break; } } i && ("break" === t || "continue" === t) && i.tryLoc <= e && e <= i.finallyLoc && (i = null); var a = i ? i.completion : {}; return a.type = t, a.arg = e, i ? (this.method = "next", this.next = i.finallyLoc, y) : this.complete(a); }, complete: function complete(t, e) { if ("throw" === t.type) throw t.arg; return "break" === t.type || "continue" === t.type ? this.next = t.arg : "return" === t.type ? (this.rval = this.arg = t.arg, this.method = "return", this.next = "end") : "normal" === t.type && e && (this.next = e), y; }, finish: function finish(t) { for (var e = this.tryEntries.length - 1; e >= 0; --e) { var r = this.tryEntries[e]; if (r.finallyLoc === t) return this.complete(r.completion, r.afterLoc), resetTryEntry(r), y; } }, "catch": function _catch(t) { for (var e = this.tryEntries.length - 1; e >= 0; --e) { var r = this.tryEntries[e]; if (r.tryLoc === t) { var n = r.completion; if ("throw" === n.type) { var o = n.arg; resetTryEntry(r); } return o; } } throw Error("illegal catch attempt"); }, delegateYield: function delegateYield(e, r, n) { return this.delegate = { iterator: values(e), resultName: r, nextLoc: n }, "next" === this.method && (this.arg = t), y; } }, e; }
 function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.value; } catch (n) { return void e(n); } i.done ? t(u) : Promise.resolve(u).then(r, o); }
 function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; }
+function _classPrivateMethodInitSpec(e, a) { _checkPrivateRedeclaration(e, a), a.add(e); }
+function _classPrivateFieldInitSpec(e, t, a) { _checkPrivateRedeclaration(e, t), t.set(e, a); }
+function _checkPrivateRedeclaration(e, t) { if (t.has(e)) throw new TypeError("Cannot initialize the same private elements twice on an object"); }
+function _classPrivateFieldSet(s, a, r) { return s.set(_assertClassBrand(s, a), r), r; }
+function _classPrivateFieldGet(s, a) { return s.get(_assertClassBrand(s, a)); }
+function _assertClassBrand(e, t, n) { if ("function" == typeof e ? e === t : e.has(t)) return arguments.length < 3 ? t : n; throw new TypeError("Private element is not present on this object"); }
 function _classCallCheck(a, n) { if (!(a instanceof n)) throw new TypeError("Cannot call a class as a function"); }
 function _defineProperties(e, r) { for (var t = 0; t < r.length; t++) { var o = r[t]; o.enumerable = o.enumerable || !1, o.configurable = !0, "value" in o && (o.writable = !0), Object.defineProperty(e, _toPropertyKey(o.key), o); } }
 function _createClass(e, r, t) { return r && _defineProperties(e.prototype, r), Object.defineProperty(e, "prototype", { writable: !1 }), e; }
@@ -8589,33 +8568,43 @@ var AutoSizeController = /*#__PURE__*/function (_utils$EventEmitter2) {
     }
   }]);
 }(EventEmitter); // var LocalStorageDeleted = Symbol("LocalStorageDeleted");
+var _name = /*#__PURE__*/new WeakMap();
+var _data = /*#__PURE__*/new WeakMap();
+var _defaults = /*#__PURE__*/new WeakMap();
+var _last_data_hash = /*#__PURE__*/new WeakMap();
+var _interval = /*#__PURE__*/new WeakMap();
+var _LocalStorageBucket_brand = /*#__PURE__*/new WeakSet();
 var LocalStorageBucket = /*#__PURE__*/function (_utils$EventEmitter3) {
   function LocalStorageBucket(name, defaults) {
     var _this4;
     _classCallCheck(this, LocalStorageBucket);
     _this4 = _callSuper(this, LocalStorageBucket);
-    _this4.save = debounce(_this4._save, 0);
-    _this4._data = {};
-    _this4._name = name;
-    _this4._defaults = defaults ? deep_copy(defaults) : {};
-    _this4._interval = setInterval(function () {
-      // in case it is altered in another window.
-      var data_string = localStorage.getItem(_this4._name);
-      if (_this4._last_data_string !== data_string) {
-        var data = JSON.parse(data_string);
-        for (var k in _this4._defaults) {
-          var v = data && k in data ? data[k] : _this4._defaults[k];
-          _this4.set(k, v);
-        }
-      }
-    }, 1000);
+    _classPrivateMethodInitSpec(_this4, _LocalStorageBucket_brand);
+    _classPrivateFieldInitSpec(_this4, _name, void 0);
+    _classPrivateFieldInitSpec(_this4, _data, {});
+    _classPrivateFieldInitSpec(_this4, _defaults, void 0);
+    _classPrivateFieldInitSpec(_this4, _last_data_hash, void 0);
+    _classPrivateFieldInitSpec(_this4, _interval, void 0);
+    _this4.save = debounce(_assertClassBrand(_LocalStorageBucket_brand, _this4, _save), 0);
+    _classPrivateFieldSet(_name, _this4, name);
+    _classPrivateFieldSet(_defaults, _this4, defaults ? deep_copy(defaults) : {});
+    // in case it is altered in another window.
+    _classPrivateFieldSet(_interval, _this4, setInterval(function () {
+      return _this4.load();
+    }, 2000));
+    _this4.load();
     return _this4;
   }
   _inherits(LocalStorageBucket, _utils$EventEmitter3);
   return _createClass(LocalStorageBucket, [{
+    key: "$",
+    get: function get() {
+      return this.data;
+    }
+  }, {
     key: "data",
     get: function get() {
-      return Object.assign({}, this.defaults, this._data);
+      return Object.assign({}, this.defaults, _classPrivateFieldGet(_data, this));
     }
   }, {
     key: "keys",
@@ -8625,33 +8614,34 @@ var LocalStorageBucket = /*#__PURE__*/function (_utils$EventEmitter3) {
   }, {
     key: "defaults",
     get: function get() {
-      return this._defaults;
+      return _classPrivateFieldGet(_defaults, this);
     }
   }, {
     key: "get",
     value: function get(k) {
-      return this._data[k] == null ? this._defaults[k] : this._data[k];
+      return k in _classPrivateFieldGet(_data, this) ? _classPrivateFieldGet(_data, this)[k] : _classPrivateFieldGet(_defaults, this)[k];
     }
   }, {
     key: "set",
-    value: function set(k, value) {
-      var hash = JSON.stringify(value);
-      if (hash === JSON.stringify(this._data[k])) return;
-      if (k in this._defaults && hash === JSON.stringify(this._defaults[k])) {
-        delete this._data[k];
-      } else {
-        this._data[k] = deep_copy(value);
-      }
-      this._trigger_change(k);
+    value: function set(k, new_value) {
+      var new_hash = JSON.stringify(new_value);
+      var old_value = _classPrivateFieldGet(_data, this)[k];
+      var old_hash = JSON.stringify(old_value);
+      var default_hash = JSON.stringify(_classPrivateFieldGet(_defaults, this)[k]);
+      if (new_hash === old_hash) return;
+      if (new_hash === default_hash) delete _classPrivateFieldGet(_data, this)[k];else _classPrivateFieldGet(_data, this)[k] = new_value;
+      this.emit("change", {
+        name: k,
+        old_value: old_value,
+        new_value: new_value
+      });
       this.save();
     }
   }, {
-    key: "delete",
-    value: function _delete(k) {
-      if (this._data[k] === undefined) return;
-      delete this._data[k];
-      this._trigger_change(k);
-      this.save();
+    key: "unset",
+    value: function unset(k) {
+      if (!(k in _classPrivateFieldGet(_data, this))) return;
+      this.set(k, _classPrivateFieldGet(_defaults, this)[k]);
     }
   }, {
     key: "toggle",
@@ -8661,43 +8651,33 @@ var LocalStorageBucket = /*#__PURE__*/function (_utils$EventEmitter3) {
   }, {
     key: "load",
     value: function load() {
-      var new_values = {};
+      var reset = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : false;
+      var new_values;
       try {
-        Object.assign(new_values, JSON.parse(localStorage.getItem(this._name)));
-      } catch (_unused) {}
-      var old_values = this.data;
-      this._data = new_values;
-      new_values = this.data;
+        new_values = JSON.parse(localStorage.getItem(_classPrivateFieldGet(_name, this)));
+      } catch (_unused) {
+        return;
+      }
+      if (reset) clear(_classPrivateFieldGet(_data, this));
       for (var k in new_values) {
-        if (new_values[k] !== old_values[k] || !this._first) this._trigger_change(k);
+        if (k in _classPrivateFieldGet(_defaults, this)) {
+          this.set(k, new_values[k]);
+        } else {
+          console.warn("LocalStorageBucket '".concat(_classPrivateFieldGet(_name, this), "' key '").concat(k, "' not defined in defaults."));
+        }
       }
-      for (var k in old_values) {
-        if (!(k in new_values)) this._trigger_change(k);
-      }
-      this._first = true;
-      this.emit("load");
-    }
-  }, {
-    key: "_trigger_change",
-    value: function _trigger_change(k) {
-      this.emit("change", {
-        name: k,
-        value: this.get(k)
-      });
-    }
-  }, {
-    key: "_save",
-    value: function _save() {
-      this._last_data_string = JSON.stringify(this._data);
-      localStorage.setItem(this._name, this._last_data_string);
     }
   }, {
     key: "destroy",
     value: function destroy() {
-      clearInterval(this._interval);
+      clearInterval(_classPrivateFieldGet(_interval, this));
     }
   }]);
 }(EventEmitter);
+function _save() {
+  _classPrivateFieldSet(_last_data_hash, this, JSON.stringify(_classPrivateFieldGet(_data, this)));
+  localStorage.setItem(_classPrivateFieldGet(_name, this), _classPrivateFieldGet(_last_data_hash, this));
+}
 var WebSocket2 = /*#__PURE__*/function (_utils$EventEmitter4) {
   function WebSocket2(url) {
     var _this5;
@@ -8735,15 +8715,20 @@ var WebSocket2 = /*#__PURE__*/function (_utils$EventEmitter4) {
     key: "request",
     value: function request(data, timeout) {
       var _this7 = this;
-      return promise_timeout(new Promise(function (resolve, reject) {
-        _this7._requests++;
-        _this7._request_ids[_this7._requests] = function (response) {
+      return new Promise(function (resolve, reject) {
+        var rid = ++_this7._requests;
+        _this7._request_ids[rid] = function (response) {
           if (response.error) reject(response.error.message);else resolve(response.result);
         };
         _this7.send(Object.assign({
-          __id__: _this7._requests
+          __id__: rid
         }, data));
-      }), timeout);
+        setTimeout(function () {
+          return reject("WebSocket2 request ".concat(rid, " timed out"));
+        }, timeout);
+      })["catch"](function (e) {
+        return console.error(e);
+      });
     }
   }, {
     key: "send",
@@ -8793,7 +8778,6 @@ var WebSocket2 = /*#__PURE__*/function (_utils$EventEmitter4) {
       this.ws.addEventListener("open", function (e) {
         clearTimeout(_this8._reconnect_timeout);
         _this8.emit("open", e);
-        console.log("Connection open.");
       });
       this.ws.addEventListener("message", function (e) {
         _this8.emit("message", e);
@@ -9496,6 +9480,7 @@ UI.closest = function (elem) {
     return o;
 } */
 
+/** @return {Iterable<HTMLElement>} */
 var _handle_els = /*#__PURE__*/_regeneratorRuntime().mark(function handle_els(o) {
   var _iterator10, _step10, c, _iterator11, _step11, c2, _iterator12, _step12;
   return _regeneratorRuntime().wrap(function handle_els$(_context7) {
@@ -9699,12 +9684,11 @@ UI.Label = /*#__PURE__*/function (_UI7) {
   return _createClass(Label);
 }(UI);
 UI.Link = /*#__PURE__*/function (_UI8) {
-  function Link(href, content, settings) {
+  function Link(content, settings) {
     var _this12;
     _classCallCheck(this, Link);
     var el = $("<a>")[0];
     el.innerHTML = content;
-    el.href = href;
     _this12 = _callSuper(this, Link, [el, _objectSpread({}, settings)]);
     _this12.on("update", function () {
       if ("href" in _this12.settings) _this12.elem.href = _this12.get_setting("href");
@@ -11821,13 +11805,13 @@ function debounce_next_frame(func) {
   };
   return debounced;
 }
-function uuidv4() {
+function uuid4() {
   return "".concat(1e7, "-", 1e3, "-", 4e3, "-", 8e3, "-", 1e11).replace(/[018]/g, function (c) {
     return (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16);
   });
 }
 function uuidb64() {
-  return btoa(uuidv4());
+  return btoa(uuid4());
 }
 // ignores text elements and whitespace
 /** @param {Element} dst @param {Element} src */
@@ -12050,13 +12034,16 @@ var WindowCommunicator = /*#__PURE__*/function () {
         data: data,
         id: id
       };
-      return promise_timeout(new Promise(function (resolve) {
+      return new Promise(function (resolve, reject) {
         _this28.requests[id] = function (response) {
           resolve(response);
         };
         window.postMessage(payload, "*");
-      }), timeout)["catch"](function (e) {
-        console.warn("timed out", payload);
+        setTimeout(function () {
+          return reject("WindowCommunicator request ".concat(id, " timed out"));
+        }, timeout);
+      })["catch"](function (e) {
+        return console.error(e);
       });
     }
   }, {
@@ -12149,5 +12136,5 @@ function find(el, selector, type) {
   }, _marked, null, [[8, 18, 21, 24]]);
 }
 
-export { AutoSizeController, Dt as ClickScrollPlugin, api as Cookie, LocalStorageBucket, OverlayScrollbars, ScrollOverlay, It as ScrollbarsHidingPlugin, Et as SizeObserverPlugin, TouchListener, UI, WebSocket2 as WebSocket, WindowCommunicator, autosize, build_table, clone_document_head, closest, cycle_select, debounce_next_frame, decode_html_entities, detect_wrapped_elements, download, _empty as empty, encode_html_entities, escape_html_entities, fetch, find, fix_options, get_anchor_same_origin_hash, get_anchor_url, get_index, get_owner_window, get_top_position, get_value, has_focus, has_touch_screen, iframe_ready, insert_after, insert_at, is_html, is_scrollbar_visible, is_visible, move, on_click_and_hold, on_stylesheet_load, open_file_dialog, parse_style, read_file, rebuild, render_html, reset_style, restart_animation, scroll_percent, scroll_pos_from_bottom, scroll_to, select_text, set_attribute, set_children, set_inner_html, set_select_options, set_style_property, set_text, set_value, sync_attributes, sync_dom, tippy, toggle_attribute, toggle_class, upload, uuidb64, uuidv4 };
+export { AutoSizeController, Dt as ClickScrollPlugin, api as Cookie, LocalStorageBucket, OverlayScrollbars, ScrollOverlay, It as ScrollbarsHidingPlugin, Et as SizeObserverPlugin, TouchListener, UI, WebSocket2 as WebSocket, WindowCommunicator, autosize, build_table, clone_document_head, closest, cycle_select, debounce_next_frame, decode_html_entities, detect_wrapped_elements, download, _empty as empty, encode_html_entities, escape_html_entities, fetch, find, fix_options, get_anchor_same_origin_hash, get_anchor_url, get_index, get_owner_window, get_top_position, get_value, has_focus, has_touch_screen, iframe_ready, insert_after, insert_at, is_html, is_scrollbar_visible, is_visible, move, on_click_and_hold, on_stylesheet_load, open_file_dialog, parse_style, read_file, rebuild, render_html, reset_style, restart_animation, scroll_percent, scroll_pos_from_bottom, scroll_to, select_text, set_attribute, set_children, set_inner_html, set_select_options, set_style_property, set_text, set_value, sync_attributes, sync_dom, tippy, toggle_attribute, toggle_class, upload, uuid4, uuidb64 };
 //# sourceMappingURL=dom.mjs.map
