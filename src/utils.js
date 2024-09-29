@@ -706,9 +706,9 @@ export const Observer = (()=>{
 		}
 		function destroy() {
 			listeners.splice(0, listeners.length);
-			for (var [key, parent] of Array.from(parents)) {
+			/* for (var [key, parent] of Array.from(parents)) {
 				delete parent.proxy[key];
-			}
+			} */
 		}
 		function emit(path, type, old_value, new_value, nested=false) {
 			// technically accurate - to track changes objects must be deep copied here... but unnecessary for my purposes.
@@ -877,7 +877,7 @@ export const Observer = (()=>{
 				let target = Observer.get_target(new_value);
 				new_value = {};
 				if (c.old_value !== null) {
-					new_value[RESET_KEY] = Array.isArray(target) ? 1 : 0; // 1 = Array, 0 = Object
+					new_value[RESET_KEY] = target.constructor.name;
 				}
 			}
 			r[key] = new_value;
@@ -887,15 +887,28 @@ export const Observer = (()=>{
 
 	// root must be object, not array.
 	Observer.apply_changes = function(target, changes) {
+		if (Array.isArray(changes)) {
+			changes = Observer.flatten_changes(changes);
+		}
 		var apply = (target, changes) =>{
 			for (var k in changes)  {
 				if (k === RESET_KEY) continue;
 				if (typeof changes[k] === 'object' && changes[k] !== null) {
 					if (RESET_KEY in changes[k]) {
-						if (!target[k] || Array.isArray(target[k]) != changes[k][RESET_KEY]) {
-							target[k] = changes[k][RESET_KEY] ? [] : {};
+						// if (!target[k]) {
+						// 	target[k] = new (eval(changes[k][RESET_KEY]))();
+						// } else {
+						// 	clear(target[k]); // VERY IMPORTANT - this keeps any prototype stuff.
+						// }
+						if (target[k]) {
+							// target[k] = new (target[k].constructor)();
+							if (target[k][Observer.RESET_KEY]) {
+								target[k][Observer.RESET_KEY]();
+							} else {
+								clear(target[k]);
+							}
 						} else {
-							clear(target[k]); // VERY IMPORTANT - this keeps any prototype stuff.
+							target[k] = new (eval(changes[k][RESET_KEY]))();
 						}
 					}
 					if (typeof target[k] !== "object" || target[k] === null) {
@@ -903,13 +916,14 @@ export const Observer = (()=>{
 					}
 					apply(target[k], changes[k]);
 					if (Array.isArray(changes[k])) target[k].length = changes[k].length;
+					
 				} else if (changes[k] === null) {
 					delete target[k];
 				} else {
 					target[k] = changes[k];
 				}
 			}
-		}
+		};
 		apply(target, changes);
 	}
 	return Observer;
@@ -1061,33 +1075,26 @@ export function sets_equal(...sets) {
 	}
 	return true;
 }
-export function debounce(func, wait=0, immediate=false) {
-	var timeout, previous, args, result, context;
-	var later = function() {
-		var passed = Date.now() - previous;
-		if (wait > passed) {
-			timeout = setTimeout(later, wait - passed);
-		} else {
-			timeout = null;
-			if (!immediate) result = func.apply(context, args);
-			if (!timeout) args = context = null;
-		}
-	};
-	var debounced = function(...p) {
-		context = this;
-		args = p;
-		previous = Date.now();
-		if (!timeout) {
-			timeout = setTimeout(later, wait);
-			if (immediate) result = func.apply(context, args);
-		}
-		return result;
-	};
-	debounced.cancel = function() {
-		clearTimeout(timeout);
-		timeout = args = context = null;
-	};
-	return debounced;
+/** @template T @param {function():T} func @return {Promise<T>} */
+export function debounce(func, t=0) {
+    var timeout_id, args, context, promise, resolve;
+    var later = ()=>{
+		resolve(func.apply(context, args));
+		promise = null;
+	}
+    var debounced = function(...p) {
+        context = this;
+        args = p;
+		return promise = promise || new Promise(r=>{
+            resolve = r;
+            timeout_id = setTimeout(later, t);
+        });
+    };
+    debounced.cancel = ()=>{
+		clearTimeout(timeout_id);
+		promise = null;
+	}
+    return debounced;
 }
 export function throttle(func, wait, options) {
 	var timeout, context, args, result;
@@ -1154,7 +1161,7 @@ export function remove_nulls(obj) {
 		}
 	}
 }
-/** @template T @param {Iterable<T>} values @param {function(T):string} cb @return {Record<string,T[]>} */
+/** @template T @param {Iterable<T>} values @param {function(T):string} cb @return {Record<PropertyKey,T[]>} */
 export function group_by(values, cb) {
 	var groups = {};
 	for (var value of values) {
@@ -1206,8 +1213,15 @@ export function string_to_bytes(s) {
 	else if (m = unit.match(/^pi(bi)?/i)) e = Math.pow(1024,5);
 	else if (m = unit.match(/^p(eta)?/i)) e = Math.pow(1000,5);
 	unit = unit.slice(m ? m[0].length : 0);
-	if (unit.match(/^b(?!yte)/)) num /= 8;
+	if (unit.match(/^b(?!yte)/)) num /= 8; // important lower case, uppercase B means byte usually;
 	return num * e;
+}
+export function format_bitrate(value, unit="k") {
+	unit = unit.toLowerCase();
+    if (unit.startsWith("b")) return Math.floor(value*8)+"bps"
+    if (unit.startsWith("k")) return Math.floor(value/1000*8)+"kbps"
+    if (unit.startsWith("m")) return Math.floor(value/1000/1000*8)+"mbps"
+    if (unit.startsWith("g")) return Math.floor(value/1000/1000/1000*8)+"gbps"
 }
 export function is_ip_local(ip) {
 	return ip === "127.0.0.1" || ip === "::1" || ip == "::ffff:127.0.0.1"
@@ -1373,6 +1387,20 @@ export function promise_pool(array, iteratorFn, poolLimit=Infinity) {
 export function timeout(ms) {
 	if (!Number.isFinite(ms) || ms <= 0) return Promise.resolve();
 	return new Promise(resolve=>setTimeout(resolve, ms));
+}
+export function retry_until(cb, attempts, delay, msg) {
+	return new Promise(async(resolve,reject)=>{
+		while (attempts--) {
+			let t = Date.now();
+			try {
+				return resolve(await cb());
+			} catch (err) {
+				console.warn(`${msg} failed, trying again [${attempts} attempts remaining]...`);
+			}
+			await timeout(delay-(Date.now()-t));
+		}
+		reject();
+	});
 }
 export function split_string(str, partLength) {
 	var list = [];
@@ -1632,7 +1660,7 @@ export function sum(iterable) {
 	return total;
 }
 /** @param {Iterable<number>} iterable */
-export function average(iterable) {
+export function average(...iterable) {
 	var total = 0, n=0;
 	for (var num of iterable) {
 		total += num;
@@ -1658,7 +1686,7 @@ export function key_count(ob) {
 	for (var k in ob) i++
 	return i;
 }
-/** @template T @param {Record<string,T>} ob @param {number} max_size  @returns {T[]} */
+/** @template T @param {Record<PropertyKey,T>} ob @param {number} max_size  @returns {T[]} */
 export function trim_object(ob, max_size) {
 	var result = [];
 	var num_keys = key_count(ob);
@@ -1994,6 +2022,28 @@ export function deep_diff(o1, o2) {
 	}
 	return _deep_diff(o1,o2) || {};
 }
+/** @param {Iterable<{id,parent}>} nodes */
+export function is_circular(nodes) {
+	return detect_circular_structure(nodes).length > 0;
+}
+export function detect_circular_structure(nodes) {
+	var links = {};
+	for (var {id, parent} of nodes) {
+		links[parent] = links[parent] || {};
+		links[parent][id] = 1;
+	}
+	let is_circular = (id, visited={})=>{
+		if (visited[id]) return true;
+		visited[id] = 1;
+		if (links[id]) {
+			for (var cid in links[id]) {
+				if (is_circular(cid, visited)) return true;
+			}
+		}
+		return false;
+	}
+	return nodes.filter(({id})=>is_circular(id)).map(({id})=>id);
+}
 
 // flattens tree like object structure to list of paths and values
 export function deep_entries(o, only_values=true, filter=null) {
@@ -2284,11 +2334,12 @@ export class Cache {
 }
 
 export function nearest(num, ...values) {
-	var minDiff = Number.MAX_VALUE;
+	var min_diff = Number.MAX_VALUE;
+	var curr = num;
 	for (var val of values) {
-		var m = Math.abs(num - values[i]);
-		if (m < minDiff) {
-			minDiff = m;
+		var m = Math.abs(num - val);
+		if (m < min_diff) {
+			min_diff = m;
 			curr = val;
 		}
 	}
@@ -2328,5 +2379,7 @@ export function fix_url(_url) {
   }
 	return url.toString();
 }
+
+export const noop = ()=>{};
 
 export { md5 }

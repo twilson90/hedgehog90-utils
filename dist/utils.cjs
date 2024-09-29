@@ -1166,12 +1166,9 @@ var Observer = function () {
     }
     function destroy() {
       listeners.splice(0, listeners.length);
-      for (var _i2 = 0, _Array$from = Array.from(parents); _i2 < _Array$from.length; _i2++) {
-        var _Array$from$_i = _slicedToArray(_Array$from[_i2], 2),
-          key = _Array$from$_i[0],
-          parent = _Array$from$_i[1];
-        delete parent.proxy[key];
-      }
+      /* for (var [key, parent] of Array.from(parents)) {
+      	delete parent.proxy[key];
+      } */
     }
     function emit(path, type, old_value, new_value) {
       var nested = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : false;
@@ -1352,8 +1349,8 @@ var Observer = function () {
         var c = _step6.value;
         var key = c.path[c.path.length - 1];
         var r = result;
-        for (var _i3 = 0; _i3 < c.path.length - 1; _i3++) {
-          var p = c.path[_i3];
+        for (var i = 0; i < c.path.length - 1; i++) {
+          var p = c.path[i];
           if (r[p] === undefined) r[p] = {};
           r = r[p];
         }
@@ -1362,7 +1359,7 @@ var Observer = function () {
           var target = Observer.get_target(new_value);
           new_value = {};
           if (c.old_value !== null) {
-            new_value[RESET_KEY] = Array.isArray(target) ? 1 : 0; // 1 = Array, 0 = Object
+            new_value[RESET_KEY] = target.constructor.name;
           }
         }
         r[key] = new_value;
@@ -1377,15 +1374,28 @@ var Observer = function () {
 
   // root must be object, not array.
   Observer.apply_changes = function (target, changes) {
+    if (Array.isArray(changes)) {
+      changes = Observer.flatten_changes(changes);
+    }
     var _apply = function apply(target, changes) {
       for (var k in changes) {
         if (k === RESET_KEY) continue;
         if (_typeof(changes[k]) === 'object' && changes[k] !== null) {
           if (RESET_KEY in changes[k]) {
-            if (!target[k] || Array.isArray(target[k]) != changes[k][RESET_KEY]) {
-              target[k] = changes[k][RESET_KEY] ? [] : {};
+            // if (!target[k]) {
+            // 	target[k] = new (eval(changes[k][RESET_KEY]))();
+            // } else {
+            // 	clear(target[k]); // VERY IMPORTANT - this keeps any prototype stuff.
+            // }
+            if (target[k]) {
+              // target[k] = new (target[k].constructor)();
+              if (target[k][Observer.RESET_KEY]) {
+                target[k][Observer.RESET_KEY]();
+              } else {
+                clear(target[k]);
+              }
             } else {
-              clear(target[k]); // VERY IMPORTANT - this keeps any prototype stuff.
+              target[k] = new (eval(changes[k][RESET_KEY]))();
             }
           }
           if (_typeof(target[k]) !== "object" || target[k] === null) {
@@ -1652,19 +1662,13 @@ function sets_equal() {
   }
   return true;
 }
+/** @template T @param {function():T} func @return {Promise<T>} */
 function debounce(func) {
-  var wait = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
-  var immediate = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
-  var timeout, previous, args, result, context;
-  var _later = function later() {
-    var passed = Date.now() - previous;
-    if (wait > passed) {
-      timeout = setTimeout(_later, wait - passed);
-    } else {
-      timeout = null;
-      if (!immediate) result = func.apply(context, args);
-      if (!timeout) args = context = null;
-    }
+  var t = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
+  var timeout_id, args, context, promise, resolve;
+  var later = function later() {
+    resolve(func.apply(context, args));
+    promise = null;
   };
   var debounced = function debounced() {
     context = this;
@@ -1672,16 +1676,14 @@ function debounce(func) {
       p[_key10] = arguments[_key10];
     }
     args = p;
-    previous = Date.now();
-    if (!timeout) {
-      timeout = setTimeout(_later, wait);
-      if (immediate) result = func.apply(context, args);
-    }
-    return result;
+    return promise = promise || new Promise(function (r) {
+      resolve = r;
+      timeout_id = setTimeout(later, t);
+    });
   };
   debounced.cancel = function () {
-    clearTimeout(timeout);
-    timeout = args = context = null;
+    clearTimeout(timeout_id);
+    promise = null;
   };
   return debounced;
 }
@@ -1746,13 +1748,13 @@ function remove_nulls(obj) {
       if (obj[i] == null) obj.splice(i, 1);
     }
   } else {
-    for (var _i4 = 0, _Object$keys = Object.keys(obj); _i4 < _Object$keys.length; _i4++) {
-      var k = _Object$keys[_i4];
+    for (var _i2 = 0, _Object$keys = Object.keys(obj); _i2 < _Object$keys.length; _i2++) {
+      var k = _Object$keys[_i2];
       if (obj[k] == null) delete obj[k];
     }
   }
 }
-/** @template T @param {Iterable<T>} values @param {function(T):string} cb @return {Record<string,T[]>} */
+/** @template T @param {Iterable<T>} values @param {function(T):string} cb @return {Record<PropertyKey,T[]>} */
 function group_by(values, cb) {
   var groups = {};
   var _iterator12 = _createForOfIteratorHelper(values),
@@ -1819,8 +1821,16 @@ function string_to_bytes(s) {
   var unit = m[0] || "";
   if (m = unit.match(/^ki(bi)?/i)) e = 1024;else if (m = unit.match(/^k(ilo)?/i)) e = 1000;else if (m = unit.match(/^mi(bi)?/i)) e = Math.pow(1024, 2);else if (m = unit.match(/^m(ega)?/i)) e = Math.pow(1000, 2);else if (m = unit.match(/^gi(bi)?/i)) e = Math.pow(1024, 3);else if (m = unit.match(/^g(iga)?/i)) e = Math.pow(1000, 3);else if (m = unit.match(/^ti(bi)?/i)) e = Math.pow(1024, 4);else if (m = unit.match(/^t(era)?/i)) e = Math.pow(1000, 4);else if (m = unit.match(/^pi(bi)?/i)) e = Math.pow(1024, 5);else if (m = unit.match(/^p(eta)?/i)) e = Math.pow(1000, 5);
   unit = unit.slice(m ? m[0].length : 0);
-  if (unit.match(/^b(?!yte)/)) num /= 8;
+  if (unit.match(/^b(?!yte)/)) num /= 8; // important lower case, uppercase B means byte usually;
   return num * e;
+}
+function format_bitrate(value) {
+  var unit = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : "k";
+  unit = unit.toLowerCase();
+  if (unit.startsWith("b")) return Math.floor(value * 8) + "bps";
+  if (unit.startsWith("k")) return Math.floor(value / 1000 * 8) + "kbps";
+  if (unit.startsWith("m")) return Math.floor(value / 1000 / 1000 * 8) + "mbps";
+  if (unit.startsWith("g")) return Math.floor(value / 1000 / 1000 / 1000 * 8) + "gbps";
 }
 function is_ip_local(ip) {
   return ip === "127.0.0.1" || ip === "::1" || ip == "::ffff:127.0.0.1";
@@ -1870,8 +1880,8 @@ function time_delta_readable(delta) {
     token = _ref2[0],
     i = _ref2[1];
   seconds = Math.abs(seconds);
-  for (var _i5 = 0, _time_formats = time_formats; _i5 < _time_formats.length; _i5++) {
-    var format = _time_formats[_i5];
+  for (var _i3 = 0, _time_formats = time_formats; _i3 < _time_formats.length; _i3++) {
+    var format = _time_formats[_i3];
     if (seconds >= format[0]) continue;
     return typeof format[2] === 'string' ? format[i] : "".concat(Math.floor(seconds / format[2]), " ").concat(format[1], " ").concat(token);
   }
@@ -1928,28 +1938,28 @@ function promise_all_object(_x) {
   return _promise_all_object.apply(this, arguments);
 }
 function _promise_all_object() {
-  _promise_all_object = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee3(obj) {
+  _promise_all_object = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee4(obj) {
     var new_obj;
-    return _regeneratorRuntime().wrap(function _callee3$(_context6) {
-      while (1) switch (_context6.prev = _context6.next) {
+    return _regeneratorRuntime().wrap(function _callee4$(_context7) {
+      while (1) switch (_context7.prev = _context7.next) {
         case 0:
           new_obj = {};
-          _context6.next = 3;
-          return Promise.all(Object.entries(obj).map(function (_ref8) {
-            var _ref9 = _slicedToArray(_ref8, 2),
-              k = _ref9[0],
-              p = _ref9[1];
+          _context7.next = 3;
+          return Promise.all(Object.entries(obj).map(function (_ref11) {
+            var _ref12 = _slicedToArray(_ref11, 2),
+              k = _ref12[0],
+              p = _ref12[1];
             return Promise.resolve(p).then(function (data) {
               return new_obj[k] = data;
             });
           }));
         case 3:
-          return _context6.abrupt("return", new_obj);
+          return _context7.abrupt("return", new_obj);
         case 4:
         case "end":
-          return _context6.stop();
+          return _context7.stop();
       }
-    }, _callee3);
+    }, _callee4);
   }));
   return _promise_all_object.apply(this, arguments);
 }
@@ -2028,6 +2038,48 @@ function timeout(ms) {
   return new Promise(function (resolve) {
     return setTimeout(resolve, ms);
   });
+}
+function retry_until(cb, attempts, delay, msg) {
+  return new Promise(/*#__PURE__*/function () {
+    var _ref4 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee3(resolve, reject) {
+      var t;
+      return _regeneratorRuntime().wrap(function _callee3$(_context5) {
+        while (1) switch (_context5.prev = _context5.next) {
+          case 0:
+            if (!attempts--) {
+              _context5.next = 17;
+              break;
+            }
+            t = Date.now();
+            _context5.prev = 2;
+            _context5.t0 = resolve;
+            _context5.next = 6;
+            return cb();
+          case 6:
+            _context5.t1 = _context5.sent;
+            return _context5.abrupt("return", (0, _context5.t0)(_context5.t1));
+          case 10:
+            _context5.prev = 10;
+            _context5.t2 = _context5["catch"](2);
+            console.warn("".concat(msg, " failed, trying again [").concat(attempts, " attempts remaining]..."));
+          case 13:
+            _context5.next = 15;
+            return timeout(delay - (Date.now() - t));
+          case 15:
+            _context5.next = 0;
+            break;
+          case 17:
+            reject();
+          case 18:
+          case "end":
+            return _context5.stop();
+        }
+      }, _callee3, null, [[2, 10]]);
+    }));
+    return function (_x2, _x3) {
+      return _ref4.apply(this, arguments);
+    };
+  }());
 }
 function split_string(str, partLength) {
   var list = [];
@@ -2175,45 +2227,45 @@ function array_unique(arr) {
 }
 function iterate_unique(arr) {
   var seen, _iterator16, _step16, a;
-  return _regeneratorRuntime().wrap(function iterate_unique$(_context5) {
-    while (1) switch (_context5.prev = _context5.next) {
+  return _regeneratorRuntime().wrap(function iterate_unique$(_context6) {
+    while (1) switch (_context6.prev = _context6.next) {
       case 0:
         seen = new Set();
         _iterator16 = _createForOfIteratorHelper(arr);
-        _context5.prev = 2;
+        _context6.prev = 2;
         _iterator16.s();
       case 4:
         if ((_step16 = _iterator16.n()).done) {
-          _context5.next = 13;
+          _context6.next = 13;
           break;
         }
         a = _step16.value;
         if (!seen.has(a)) {
-          _context5.next = 8;
+          _context6.next = 8;
           break;
         }
-        return _context5.abrupt("continue", 11);
+        return _context6.abrupt("continue", 11);
       case 8:
         seen.add(a);
-        _context5.next = 11;
+        _context6.next = 11;
         return a;
       case 11:
-        _context5.next = 4;
+        _context6.next = 4;
         break;
       case 13:
-        _context5.next = 18;
+        _context6.next = 18;
         break;
       case 15:
-        _context5.prev = 15;
-        _context5.t0 = _context5["catch"](2);
-        _iterator16.e(_context5.t0);
+        _context6.prev = 15;
+        _context6.t0 = _context6["catch"](2);
+        _iterator16.e(_context6.t0);
       case 18:
-        _context5.prev = 18;
+        _context6.prev = 18;
         _iterator16.f();
-        return _context5.finish(18);
+        return _context6.finish(18);
       case 21:
       case "end":
-        return _context5.stop();
+        return _context6.stop();
     }
   }, _marked, null, [[2, 15, 18, 21]]);
 }
@@ -2257,15 +2309,15 @@ function is_empty(obj) {
 function filter_object(obj, filter_callback) {
   var in_place = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
   if (in_place) {
-    for (var _i6 = 0, _Object$keys2 = Object.keys(obj); _i6 < _Object$keys2.length; _i6++) {
-      var k = _Object$keys2[_i6];
+    for (var _i4 = 0, _Object$keys2 = Object.keys(obj); _i4 < _Object$keys2.length; _i4++) {
+      var k = _Object$keys2[_i4];
       if (!filter_callback(k, obj[k])) delete obj[k];
     }
     return obj;
   } else {
     var new_obj = {};
-    for (var _i7 = 0, _Object$keys3 = Object.keys(obj); _i7 < _Object$keys3.length; _i7++) {
-      var k = _Object$keys3[_i7];
+    for (var _i5 = 0, _Object$keys3 = Object.keys(obj); _i5 < _Object$keys3.length; _i5++) {
+      var k = _Object$keys3[_i5];
       if (filter_callback(k, obj[k])) new_obj[k] = obj[k];
     }
     return new_obj;
@@ -2299,8 +2351,8 @@ function clear(obj) {
   if (Array.isArray(obj)) {
     obj.splice(0, obj.length);
   } else if (_typeof(obj) === "object") {
-    for (var _i8 = 0, _Object$keys4 = Object.keys(obj); _i8 < _Object$keys4.length; _i8++) {
-      var k = _Object$keys4[_i8];
+    for (var _i6 = 0, _Object$keys4 = Object.keys(obj); _i6 < _Object$keys4.length; _i6++) {
+      var k = _Object$keys4[_i6];
       delete obj[k];
     }
   }
@@ -2363,21 +2415,16 @@ function sum(iterable) {
   return total;
 }
 /** @param {Iterable<number>} iterable */
-function average(iterable) {
+function average() {
   var total = 0,
     n = 0;
-  var _iterator18 = _createForOfIteratorHelper(iterable),
-    _step18;
-  try {
-    for (_iterator18.s(); !(_step18 = _iterator18.n()).done;) {
-      var num = _step18.value;
-      total += num;
-      n++;
-    }
-  } catch (err) {
-    _iterator18.e(err);
-  } finally {
-    _iterator18.f();
+  for (var _len11 = arguments.length, iterable = new Array(_len11), _key11 = 0; _key11 < _len11; _key11++) {
+    iterable[_key11] = arguments[_key11];
+  }
+  for (var _i7 = 0, _iterable = iterable; _i7 < _iterable.length; _i7++) {
+    var num = _iterable[_i7];
+    total += num;
+    n++;
   }
   return total / n;
 }
@@ -2386,11 +2433,11 @@ function get_best(iterable, cb) {
   var best_item = undefined,
     best_value = undefined,
     i = 0;
-  var _iterator19 = _createForOfIteratorHelper(iterable),
-    _step19;
+  var _iterator18 = _createForOfIteratorHelper(iterable),
+    _step18;
   try {
-    for (_iterator19.s(); !(_step19 = _iterator19.n()).done;) {
-      var item = _step19.value;
+    for (_iterator18.s(); !(_step18 = _iterator18.n()).done;) {
+      var item = _step18.value;
       var curr_value = cb(item);
       if (i == 0 || curr_value > best_item) {
         best_item = item;
@@ -2399,9 +2446,9 @@ function get_best(iterable, cb) {
       i++;
     }
   } catch (err) {
-    _iterator19.e(err);
+    _iterator18.e(err);
   } finally {
-    _iterator19.f();
+    _iterator18.f();
   }
   return best_item;
 }
@@ -2410,7 +2457,7 @@ function key_count(ob) {
   for (var k in ob) i++;
   return i;
 }
-/** @template T @param {Record<string,T>} ob @param {number} max_size  @returns {T[]} */
+/** @template T @param {Record<PropertyKey,T>} ob @param {number} max_size  @returns {T[]} */
 function trim_object(ob, max_size) {
   var result = [];
   var num_keys = key_count(ob);
@@ -2428,15 +2475,15 @@ function trim_object(ob, max_size) {
  * @param {...(function(T):number)} cbs
 */
 function sort(arr) {
-  for (var _len11 = arguments.length, cbs = new Array(_len11 > 1 ? _len11 - 1 : 0), _key11 = 1; _key11 < _len11; _key11++) {
-    cbs[_key11 - 1] = arguments[_key11];
+  for (var _len12 = arguments.length, cbs = new Array(_len12 > 1 ? _len12 - 1 : 0), _key12 = 1; _key12 < _len12; _key12++) {
+    cbs[_key12 - 1] = arguments[_key12];
   }
   if (!cbs.length) cbs = [function (v) {
     return v;
   }];
   return arr.sort(function (a, b) {
-    for (var _i9 = 0, _cbs = cbs; _i9 < _cbs.length; _i9++) {
-      var cb = _cbs[_i9];
+    for (var _i8 = 0, _cbs = cbs; _i8 < _cbs.length; _i8++) {
+      var cb = _cbs[_i8];
       var av = cb(a),
         bv = cb(b);
       if (!Array.isArray(av)) av = [av, "ASCENDING"];
@@ -2450,17 +2497,17 @@ function sort(arr) {
   });
 }
 function set_add(set, vals) {
-  var _iterator20 = _createForOfIteratorHelper(vals),
-    _step20;
+  var _iterator19 = _createForOfIteratorHelper(vals),
+    _step19;
   try {
-    for (_iterator20.s(); !(_step20 = _iterator20.n()).done;) {
-      var v = _step20.value;
+    for (_iterator19.s(); !(_step19 = _iterator19.n()).done;) {
+      var v = _step19.value;
       set.add(v);
     }
   } catch (err) {
-    _iterator20.e(err);
+    _iterator19.e(err);
   } finally {
-    _iterator20.f();
+    _iterator19.f();
   }
 }
 /* best(values, getter, comparator) {
@@ -2576,8 +2623,8 @@ function split_ext(filename) {
   return [filename.substr(0, i), filename.slice(i)];
 }
 function join_paths() {
-  for (var _len12 = arguments.length, paths = new Array(_len12), _key12 = 0; _key12 < _len12; _key12++) {
-    paths[_key12] = arguments[_key12];
+  for (var _len13 = arguments.length, paths = new Array(_len13), _key13 = 0; _key13 < _len13; _key13++) {
+    paths[_key13] = arguments[_key13];
   }
   var last = paths.pop();
   return [].concat(_toConsumableArray(paths.map(function (f) {
@@ -2652,17 +2699,17 @@ function flatten_tree(o, children_cb) {
     result.push(o);
     var children = children_cb.apply(o, [o]);
     if (!children || !(Symbol.iterator in children)) return;
-    var _iterator21 = _createForOfIteratorHelper(children),
-      _step21;
+    var _iterator20 = _createForOfIteratorHelper(children),
+      _step20;
     try {
-      for (_iterator21.s(); !(_step21 = _iterator21.n()).done;) {
-        var c = _step21.value;
+      for (_iterator20.s(); !(_step20 = _iterator20.n()).done;) {
+        var c = _step20.value;
         _next3(c);
       }
     } catch (err) {
-      _iterator21.e(err);
+      _iterator20.e(err);
     } finally {
-      _iterator21.f();
+      _iterator20.f();
     }
   };
   _next3(o);
@@ -2675,8 +2722,8 @@ function deep_copy(obj, replacer) {
 }
 function deep_filter(obj, cb) {
   var new_obj = Array.isArray(obj) ? [] : {};
-  for (var _i10 = 0, _Object$keys5 = Object.keys(obj); _i10 < _Object$keys5.length; _i10++) {
-    var k = _Object$keys5[_i10];
+  for (var _i9 = 0, _Object$keys5 = Object.keys(obj); _i9 < _Object$keys5.length; _i9++) {
+    var k = _Object$keys5[_i9];
     if (_typeof(obj[k]) === "object" && obj[k] !== null) new_obj[k] = deep_filter(obj[k], cb);else if (cb.apply(obj, [k, obj[k]])) new_obj[k] = obj[k];
   }
   return new_obj;
@@ -2707,11 +2754,11 @@ function deep_merge(dst, src) {
 }
 function deep_assign(o1) {
   if (_typeof(o1) !== "object") throw new Error("deep_assign requires Object as first argument");
-  for (var _len13 = arguments.length, objects = new Array(_len13 > 1 ? _len13 - 1 : 0), _key13 = 1; _key13 < _len13; _key13++) {
-    objects[_key13 - 1] = arguments[_key13];
+  for (var _len14 = arguments.length, objects = new Array(_len14 > 1 ? _len14 - 1 : 0), _key14 = 1; _key14 < _len14; _key14++) {
+    objects[_key14 - 1] = arguments[_key14];
   }
-  for (var _i11 = 0, _objects = objects; _i11 < _objects.length; _i11++) {
-    var o2 = _objects[_i11];
+  for (var _i10 = 0, _objects = objects; _i10 < _objects.length; _i10++) {
+    var o2 = _objects[_i10];
     deep_merge(o1, o2);
   }
   return o1;
@@ -2728,8 +2775,8 @@ function deep_sync(dst, src) {
     }
   }
   if (Array.isArray(src)) dst.length = src.length;
-  for (var _i12 = 0, _dst_keys = dst_keys; _i12 < _dst_keys.length; _i12++) {
-    var k = _dst_keys[_i12];
+  for (var _i11 = 0, _dst_keys = dst_keys; _i11 < _dst_keys.length; _i11++) {
+    var k = _dst_keys[_i11];
     if (!(k in src)) delete dst[k];
   }
 }
@@ -2818,6 +2865,46 @@ function deep_diff(o1, o2) {
   }
   return _deep_diff(o1, o2) || {};
 }
+/** @param {Iterable<{id,parent}>} nodes */
+function is_circular(nodes) {
+  return detect_circular_structure(nodes).length > 0;
+}
+function detect_circular_structure(nodes) {
+  var links = {};
+  var _iterator21 = _createForOfIteratorHelper(nodes),
+    _step21;
+  try {
+    for (_iterator21.s(); !(_step21 = _iterator21.n()).done;) {
+      var _step21$value = _step21.value,
+        id = _step21$value.id,
+        parent = _step21$value.parent;
+      links[parent] = links[parent] || {};
+      links[parent][id] = 1;
+    }
+  } catch (err) {
+    _iterator21.e(err);
+  } finally {
+    _iterator21.f();
+  }
+  var _is_circular = function is_circular(id) {
+    var visited = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+    if (visited[id]) return true;
+    visited[id] = 1;
+    if (links[id]) {
+      for (var cid in links[id]) {
+        if (_is_circular(cid, visited)) return true;
+      }
+    }
+    return false;
+  };
+  return nodes.filter(function (_ref5) {
+    var id = _ref5.id;
+    return _is_circular(id);
+  }).map(function (_ref6) {
+    var id = _ref6.id;
+    return id;
+  });
+}
 
 // flattens tree like object structure to list of paths and values
 function deep_entries(o) {
@@ -2846,20 +2933,20 @@ function deep_entries(o) {
 function deep_keys(o) {
   var only_values = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : true;
   var filter = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : null;
-  return deep_entries(o, only_values, filter).map(function (_ref4) {
-    var _ref5 = _slicedToArray(_ref4, 2),
-      k = _ref5[0];
-      _ref5[1];
+  return deep_entries(o, only_values, filter).map(function (_ref7) {
+    var _ref8 = _slicedToArray(_ref7, 2),
+      k = _ref8[0];
+      _ref8[1];
     return k;
   });
 }
 function deep_values(o) {
   var only_values = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : true;
   var filter = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : null;
-  return deep_entries(o, only_values, filter).map(function (_ref6) {
-    var _ref7 = _slicedToArray(_ref6, 2);
-      _ref7[0];
-      var v = _ref7[1];
+  return deep_entries(o, only_values, filter).map(function (_ref9) {
+    var _ref10 = _slicedToArray(_ref9, 2);
+      _ref10[0];
+      var v = _ref10[1];
     return v;
   });
 }
@@ -2947,42 +3034,42 @@ function deep_walk(o, delegate_filter) {
   };
   _deep_walk(o, delegate_filter, []);
 }
-function replace_async(_x2, _x3, _x4) {
+function replace_async(_x4, _x5, _x6) {
   return _replace_async.apply(this, arguments);
 }
 function _replace_async() {
-  _replace_async = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee4(str, re, callback) {
+  _replace_async = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee5(str, re, callback) {
     var parts, i, m, args, strings;
-    return _regeneratorRuntime().wrap(function _callee4$(_context7) {
-      while (1) switch (_context7.prev = _context7.next) {
+    return _regeneratorRuntime().wrap(function _callee5$(_context8) {
+      while (1) switch (_context8.prev = _context8.next) {
         case 0:
           str = String(str);
           parts = [], i = 0;
           if (!(re instanceof RegExp)) {
-            _context7.next = 15;
+            _context8.next = 15;
             break;
           }
           if (re.global) re.lastIndex = i;
         case 4:
           if (!(m = re.exec(str))) {
-            _context7.next = 13;
+            _context8.next = 13;
             break;
           }
           args = m.concat([m.index, m.input]);
           parts.push(str.slice(i, m.index), callback.apply(null, args));
           i = re.lastIndex;
           if (re.global) {
-            _context7.next = 10;
+            _context8.next = 10;
             break;
           }
-          return _context7.abrupt("break", 13);
+          return _context8.abrupt("break", 13);
         case 10:
           // for non-global regexes only take the first match
           if (m[0].length == 0) re.lastIndex++;
-          _context7.next = 4;
+          _context8.next = 4;
           break;
         case 13:
-          _context7.next = 19;
+          _context8.next = 19;
           break;
         case 15:
           re = String(re);
@@ -2991,16 +3078,16 @@ function _replace_async() {
           i += re.length;
         case 19:
           parts.push(str.slice(i));
-          _context7.next = 22;
+          _context8.next = 22;
           return Promise.all(parts);
         case 22:
-          strings = _context7.sent;
-          return _context7.abrupt("return", strings.join(""));
+          strings = _context8.sent;
+          return _context8.abrupt("return", strings.join(""));
         case 24:
         case "end":
-          return _context7.stop();
+          return _context8.stop();
       }
-    }, _callee4);
+    }, _callee5);
   }));
   return _replace_async.apply(this, arguments);
 }
@@ -3062,8 +3149,8 @@ function call(fn_this, fn_path, fn_args) {
 }
 function build_url() {
   var config, url;
-  for (var _len14 = arguments.length, args = new Array(_len14), _key14 = 0; _key14 < _len14; _key14++) {
-    args[_key14] = arguments[_key14];
+  for (var _len15 = arguments.length, args = new Array(_len15), _key15 = 0; _key15 < _len15; _key15++) {
+    args[_key15] = arguments[_key15];
   }
   if (args.length == 1) {
     config = args[0];
@@ -3123,8 +3210,8 @@ function convert_bytes(num) {
   var precision = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 2;
   num = Math.abs(num);
   var divider = 1;
-  for (var _i13 = 0, _arr2 = ["bytes", "KB", "MB", "GB", "TB", "PB"]; _i13 < _arr2.length; _i13++) {
-    x = _arr2[_i13];
+  for (var _i12 = 0, _arr2 = ["bytes", "KB", "MB", "GB", "TB", "PB"]; _i12 < _arr2.length; _i12++) {
+    x = _arr2[_i12];
     if (num / divider < 1024.0) break;
     divider *= 1024.0;
   }
@@ -3200,15 +3287,16 @@ var Cache = /*#__PURE__*/function () {
   }]);
 }();
 function nearest(num) {
-  var minDiff = Number.MAX_VALUE;
-  for (var _len15 = arguments.length, values = new Array(_len15 > 1 ? _len15 - 1 : 0), _key15 = 1; _key15 < _len15; _key15++) {
-    values[_key15 - 1] = arguments[_key15];
+  var min_diff = Number.MAX_VALUE;
+  var curr = num;
+  for (var _len16 = arguments.length, values = new Array(_len16 > 1 ? _len16 - 1 : 0), _key16 = 1; _key16 < _len16; _key16++) {
+    values[_key16 - 1] = arguments[_key16];
   }
-  for (var _i14 = 0, _values = values; _i14 < _values.length; _i14++) {
-    var val = _values[_i14];
-    var m = Math.abs(num - values[i]);
-    if (m < minDiff) {
-      minDiff = m;
+  for (var _i13 = 0, _values = values; _i13 < _values.length; _i13++) {
+    var val = _values[_i13];
+    var m = Math.abs(num - val);
+    if (m < min_diff) {
+      min_diff = m;
       curr = val;
     }
   }
@@ -3247,6 +3335,7 @@ function fix_url(_url) {
   }
   return url.toString();
 }
+var noop = function noop() {};
 
 exports.Cache = Cache;
 exports.Color = Color;
@@ -3299,6 +3388,7 @@ exports.deep_values = deep_values;
 exports.deep_walk = deep_walk;
 exports.deferred = deferred;
 exports.delete = _delete;
+exports.detect_circular_structure = detect_circular_structure;
 exports.dirname = dirname;
 exports.domain_match = domain_match;
 exports.emoji_regex = emoji_regex;
@@ -3308,6 +3398,7 @@ exports.filter_object = filter_object;
 exports.fix_url = fix_url;
 exports.flatten_tree = flatten_tree;
 exports.floor_to_factor = floor_to_factor;
+exports.format_bitrate = format_bitrate;
 exports.format_bytes = format_bytes;
 exports.get = get;
 exports.get_best = get_best;
@@ -3317,6 +3408,7 @@ exports.get_property_keys = get_property_keys;
 exports.group_by = group_by;
 exports.invlerp = invlerp;
 exports.is_absolute_path = is_absolute_path;
+exports.is_circular = is_circular;
 exports.is_empty = is_empty;
 exports.is_ip_local = is_ip_local;
 exports.is_numeric = is_numeric;
@@ -3341,6 +3433,7 @@ exports.ms_to_human_readable_str = ms_to_human_readable_str;
 exports.ms_to_shorthand_str = ms_to_shorthand_str;
 exports.ms_to_timespan_str = ms_to_timespan_str;
 exports.nearest = nearest;
+exports.noop = noop;
 exports.num_to_str = num_to_str;
 exports.options_proxy = options_proxy;
 exports.path_separator_regex = path_separator_regex;
@@ -3363,6 +3456,7 @@ exports.remove_nulls = remove_nulls;
 exports.remove_trailing_slash = remove_trailing_slash;
 exports.replace_all = replace_all;
 exports.replace_async = replace_async;
+exports.retry_until = retry_until;
 exports.round_precise = round_precise;
 exports.round_to_factor = round_to_factor;
 exports.sanitize_filename = sanitize_filename;

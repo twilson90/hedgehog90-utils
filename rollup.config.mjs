@@ -35,6 +35,9 @@ export default [
 ].map(entry=>{
   return {
     ...entry,
+    onwarn(warning, warn) {
+      if (warning.code !== 'EVAL') warn(warning)
+    },
     plugins: [
       postcss({extract:true, minimize: true, sourceMap:true}),
       sass({output: true}),

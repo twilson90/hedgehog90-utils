@@ -9,12 +9,9 @@ import "./style.scss";
 
 var _temp_div = document.createElement('div');
 var _div2 = document.createElement('div');
-var $ = function(html) {
-    var elems = render_html(html);
-    if (!elems) return null;
-    return Array.isArray(elems) ? elems : [elems];
-}
+const $ = render_html;
 const textarea_input_events = ["input", "propertychange", "paste"];
+const { debounce } = utils;
 
 const entity_table = {
     34 : 'quot', 
@@ -385,8 +382,7 @@ class AutoSizeController extends utils.EventEmitter {
 // var LocalStorageDeleted = Symbol("LocalStorageDeleted");
 class LocalStorageBucket extends utils.EventEmitter
 {   
-    get $() { return this.data; }
-    get data() { return Object.assign({}, this.defaults, this.#data) }
+    get data() { return { ...this.#defaults, ...this.#data } }
     get keys() { return Object.keys(this.data); }
     get defaults() { return this.#defaults; }
 
@@ -402,7 +398,7 @@ class LocalStorageBucket extends utils.EventEmitter
         this.#name = name;
         this.#defaults = defaults ? utils.deep_copy(defaults) : {};
         // in case it is altered in another window.
-        this.#interval = setInterval(()=>this.load(), 2000);
+        this.#interval = setInterval(()=>this.load(), 5000);
         this.load();
     }
     get(k) {
@@ -426,20 +422,18 @@ class LocalStorageBucket extends utils.EventEmitter
     toggle(k) {
         this.set(k, !this.get(k));
     }
-    load(reset=false) {
+    load() {
         var new_values;
         try {
             new_values = JSON.parse(localStorage.getItem(this.#name));
         } catch {
             return;
         }
-        if (reset) utils.clear(this.#data);
         for (var k in new_values) {
-            if (k in this.#defaults) {
-                this.set(k, new_values[k]);
-            } else {
-                console.warn(`LocalStorageBucket '${this.#name}' key '${k}' not defined in defaults.`);
-            }
+            this.set(k, new_values[k]);
+            // if (!(k in this.#defaults)) {
+            //     console.warn(`LocalStorageBucket '${this.#name}' key '${k}' not defined in defaults.`);
+            // }
         }
     }
     #save() {
@@ -556,31 +550,23 @@ class WebSocket2 extends utils.EventEmitter
 
 // depends on tippy js
 class UI extends utils.EventEmitter {
+    get disabled() { return !!this.get_setting("disabled"); }
     set disabled(value) {
         if (this.settings.disabled == value) return;
         this.settings.disabled = value;
-        this.update_next_frame();
-    }
-    get disabled() {
-        // var parent = this.parent;
-        var disabled = !!this.get_setting("disabled");
-        return disabled;
-    }
-    get disabled_or_parent_disabled() {
-        return this.disabled || this.disabled_parent;
+        this.update();
     }
     get disabled_parent() {
         var parent = this.parent;
-        return (parent ? parent.disabled_or_parent_disabled : false);
+        return (parent ? parent.disabled || parent.disabled_parent : false);
     }
+    get hidden() { return !!this.get_setting("hidden") }
     set hidden(value) {
         if (this.settings.hidden == value) return;
         this.settings.hidden = value;
-        this.update_next_frame();
-        // this.debounced_update();
+        this.update();
     }
     get root() { return this.get_closest(UI.Root); }
-    get hidden() { return this.get_setting("hidden"); }
     get visible() { return is_visible(this.elem); } // not the opposite of hidden
     get children() { return [...this.get_children()]; }
     get descendents() { return [...this.get_descendents()]; }
@@ -643,14 +629,17 @@ class UI extends utils.EventEmitter {
             if (typeof classes === "string") classes = classes.split(/\s+/);
             this.elem.classList.add(...classes)
         }
+        if ("style" in this.settings) {
+            Object.assign(this.elem.style, this.get_setting("style"));
+        }
 
         // this.__update_display();
 
-        // this.update();
-        this.update_next_frame = debounce_next_frame(()=>{
-            this.update();
+        this.update = debounce_next_frame(()=>{
+            this.__update();
+            this.__render();
         });
-        // this.update_next_frame();
+        // this.render = debounce_next_frame(()=>this.__render());
         
         if (this.elem.isConnected) {
             this.root.register(this);
@@ -662,41 +651,31 @@ class UI extends utils.EventEmitter {
 
     init(){}
 
-    update() {
+    __update() {
         this.emit("pre_update");
-
-        this.__update_display();
 
         this.get_setting("update");
         this.emit("update");
 
         for (var c of this._children) {
-            c.update();
+            c.__update();
         }
 
         this.get_setting("post_update");
         this.emit("post_update");
+
+        // this.render(); // necessary to use a delayed render because certain settings' values (e.g. disabled) may depend on other siblings.
     }
 
     update_settings(settings) {
         Object.assign(this.settings, settings);
-        this.update_next_frame();
+        return this.update();
     }
     
-    __update_display() {
+    __render() {
         var hidden = this.hidden;
         if (hidden !== undefined) toggle_class(this.elem, "d-none", hidden);
-        toggle_attribute(this.elem, "disabled", !!this.disabled_or_parent_disabled);
-
-        /* var _class = this.class.join(" ");
-        if ("class" in this.settings) {
-            var c = this.get_setting("class");
-            _class += " "+(typeof c === "string" ? c : c.join(" "));
-        }
-        if (_class !== this.__last_class) {
-            this.__last_class = _class; // I hate this so much
-            this.elem.className = _class;
-        } */
+        toggle_attribute(this.elem, "disabled", this.disabled || this.disabled_parent);
 
         if ("gap" in this.settings) {
             var gap = this.get_setting("gap");
@@ -716,6 +695,12 @@ class UI extends utils.EventEmitter {
         if ("mousedown" in this.settings) this.elem.onmousedown = (e)=>{ var r = this.get_setting("mousedown", e); this.emit("mousedown"); return r; }
         if ("mouseup" in this.settings) this.elem.onmouseup = (e)=>{ var r = this.get_setting("mouseup", e); this.emit("mouseup"); return r; }
         if ("dblclick" in this.settings) this.elem.ondblclick = (e)=>{ var r = this.get_setting("dblclick", e); this.emit("dblclick"); return r; }
+
+        this.emit("render");
+        
+        for (var c of this._children) {
+            c.__render();
+        }
     }
 
     get_setting(key, ...args) {
@@ -767,7 +752,7 @@ class UI extends utils.EventEmitter {
             }
             process(this, layout);
         }
-        this.update_next_frame();
+        this.update();
     }
 
     /* clone() {
@@ -836,11 +821,8 @@ UI.parents = function*(elem, include_self=false) {
         elem = elem.parentElement;
     }
 }
-/** @returns {UI} */
-UI.parent = function(elem) {
-    for (var ui of UI.parents(elem)) return ui;
-}
-/** @template [T=UI] @param {Element} elem @param {new() => T} type @returns {T} */
+/** @template [T=UI] @param {Element} elem @param {new() => T} type @returns {T}
+ * @description Returns the closest UI element (including if the element itself matches) */
 UI.closest = function(elem, type=UI) {
     for (var ui of UI.parents(elem, true)) {
         if (ui instanceof type) return ui;
@@ -964,7 +946,7 @@ UI.Root = class Root extends UI {
         this.ui_observer = new MutationObserver(mutations=>{
             for (var mutation of mutations) {
                 for (var node of mutation.addedNodes) {
-                    for (var ui of UI.find(node, UI, true, true)) {
+                    for (var ui of UI.find(node, UI, true, true)) { // [...UI.find(node, UI, true, true)]].reverse()
                         this.register(ui);
                     }
                 }
@@ -976,31 +958,27 @@ UI.Root = class Root extends UI {
             }
         });
 
-        ["keydown","keyup","mousedown","mouseup","click"].forEach(ev=>{
-            root.addEventListener(ev, (e)=>{
-                this.update_next_frame();
-                /* for (var ui of UI.parents(e.target, true)) {
-                    ui.update_next_frame();
-                } */
-            });
-        });
+        /* var events = ["keydown","keyup","mousedown","mouseup","click"];
+        var update = this.update.bind(this);
+        for (var ev of events) {
+            root.addEventListener(ev, update)
+            this.on("destroy", ()=>root.removeEventListener(ev, update));
+        } */
 
         this.ui_observer.observe(root, { childList:true, subtree:true }); //, attributes:true
     }
     /** @param {UI} ui */
     register(ui) {
         this.unregister(ui);
-        ui._parent = UI.parent(ui.elem);
+        ui._parent = UI.closest(ui.elem.parentElement);
         if (ui instanceof UI.Property) {
             ui._container = UI.closest(ui.elem, UI.PropertyContainer);
             if (ui._container) ui._container._properties.add(ui);
         }
         if (ui._parent) ui._parent._children.add(ui);
-        ui.update_next_frame();
-        /* if (!this.connected_uis.has(ui)) {
-            this.connected_uis.add(ui);
-            ui.update_next_frame();
-        } */
+        ui.__update();
+        ui.__render();
+        ui.emit("register");
     }
     /** @param {UI} ui */
     unregister(ui) {
@@ -1012,13 +990,8 @@ UI.Root = class Root extends UI {
             ui._container._properties.delete(ui);
             ui._container = null;
         }
-        // this.connected_uis.delete(ui);
+        ui.emit("unregister");
     }
-    /* update() {
-        for (var ui of this.connected_uis) {
-            ui.update();
-        }
-    } */
     destroy() {
         super.destroy();
         clearInterval(this.ui_interval);
@@ -1038,13 +1011,7 @@ UI.PropertyContainer = class PropertyContainer extends UI {
         this._datas = [...values];
         if (this._datas.length == 0) this._datas = [null];
     }
-    get valid() { return this.properties.every(p=>p.valid); }
-    get valid_visible() {
-        for (var p of this.get_properties()) {
-            if (p.visible && !p.valid) return false;
-        }
-        return true;
-    }
+    get valid() { return this.properties.filter(p=>!p.hidden).every(p=>p.valid); }
     /** @type {object} */
     get property_lookup() { return Object.fromEntries(this.properties.map(p=>[p.id, p._value])); }
     /** @type {object} */
@@ -1075,59 +1042,25 @@ UI.PropertyContainer = class PropertyContainer extends UI {
 
         this.elem.classList.add("property-container");
 
-        // /** @type {Set<UI.Property>} */
-        // this.properties = new Set();
-        
-        /* if (this.settings.autoregister) {
-            this.autoregister_observer = new MutationObserver(mutations=>{
-                for (var mutation of mutations) {
-                    for (var node of mutation.addedNodes) {
-                        this.register_properties(...UI.find(node, UI.Property, false, true));
-                    }
-                }
-            });
-            this.autoregister_observer.observe(this.elem, { childList:true, subtree:true });
-        } */
-
         this.datas = [null]; // necessary so update(null, {...}) can work
 
         this.elem.addEventListener("keydown", (e)=>{
             if (e.key === "Enter" && e.target.matches("input,select")) {
-                var inputs = this.get_interactive_elements();
-                var next_input = inputs[inputs.indexOf(e.target) + 1];
-                if (next_input) next_input.focus();
-                else e.target.blur();
+                e.target.blur();
                 e.preventDefault();
                 e.stopPropagation();
             }
         })
-    }
-    
-    // /** @param {UI.Properties} properties */
-    // register_properties(...properties) {
-    //     for (var p of properties) {
-    //         this.properties.add(p);
-    //         p.container = this;
-    //     }
-    // }
-    
-    // /** @param {UI.Properties} properties */
-    // unregister_properties(...properties) {
-    //     for (var p of properties) {
-    //         this.properties.delete(p);
-    //         p.container = undefined;
-    //     }
-    // }
-    
-    get_interactive_elements() {
-        return [...this.elem.querySelectorAll("input,select,textarea")].filter(e=>is_visible(e));
+        this.addEventListener("property-change", ()=>{
+            this.update();
+        })
     }
 
     reset() {
         for (var p of this.get_properties()) p.reset(true);
     }
 
-    update() {
+    __update() {
         for (var p of this.get_properties()) {
             if (p.settings["data"] !== undefined) {
                 var values = this.datas.map(d=>p.get_setting("data", d));
@@ -1145,13 +1078,9 @@ UI.PropertyContainer = class PropertyContainer extends UI {
                 }
             }
         }
-        super.update();
+        super.__update();
     }
 }
-
-/* UI.Indeterminate = Object.freeze(new class {
-    toString() { return "[Indeterminate]"; }
-}()); */
 
 /** @typedef {HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement} Input */
 
@@ -1187,7 +1116,7 @@ UI.Property = class Property extends UI {
     get disabled() {
         return this.datas.some(item=>this.get_setting("disabled", item)) || this.disabled_parent || !this.options_consistant;
     }
-    get valid() { //return this.values_valid === true &&
+    get valid() {
         return this.inputs_valid === true;
     }
     
@@ -1296,7 +1225,7 @@ UI.Property = class Property extends UI {
             label_elem = $(`<label><span></span></label>`)[0];
             this.label = new UI(label_elem, {
                 hidden: ()=>!this.get_setting("label", this.data),
-                update:()=>{
+                update: ()=>{
                     set_inner_html(this.label.elem.firstChild, this.get_setting("label", this.data));
                     var info = this.get_setting("info", this.data);
                     if (info) {
@@ -1312,7 +1241,7 @@ UI.Property = class Property extends UI {
             });
             this.prepend(this.label);
         }
-        label_elem.setAttribute("for", this.name_id);
+        set_attribute(label_elem, "for", this.name_id);
 
         if (this.get_setting("copy")) {
             var copy_hide_timeout;
@@ -1361,8 +1290,8 @@ UI.Property = class Property extends UI {
     }
 
     setup_generic_input(input) {
-        input.setAttribute("id", this.name_id);
-        // input.setAttribute("name", this.name);
+        set_attribute(input, "id", this.name_id);
+        // set_attribute(input, "name", this.name);
         var input_events = ["change", "input"];
         input_events.forEach(ev_type=>{
             input.addEventListener(ev_type, (e,i)=>{
@@ -1373,10 +1302,10 @@ UI.Property = class Property extends UI {
             });
         });
         input.addEventListener("blur", (e)=>{
-            this.update_next_frame();
+            this.root.update();
         });
         input.addEventListener("focus", (e)=>{
-            this.update_next_frame();
+            this.root.update();
         });
 
         if (input.nodeName === "INPUT") {
@@ -1471,7 +1400,7 @@ UI.Property = class Property extends UI {
 
         // --------------------------------------------
 
-        this.update_next_frame();
+        this.update();
 
         var e = {
             "datas": [...this.datas],
@@ -1490,7 +1419,9 @@ UI.Property = class Property extends UI {
         return changed;
     }
 
-    update() {
+    __update() {
+        super.__update();
+
         var is_default = this.is_default;
         var is_indeterminate = this.is_indeterminate;
         var default_value = this.get_setting("default", this.data);
@@ -1531,7 +1462,7 @@ UI.Property = class Property extends UI {
 
         this.inputs.forEach((/**@type {HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement}*/ input,i)=>{
             // input.disabled = disabled;
-            input.toggleAttribute("disabled", disabled===true);
+            toggle_attribute(input, "disabled", disabled===true);
             if (readonly !== undefined) {
                 input.readOnly = readonly;
                 // set_attribute(input, "readonly", readonly);
@@ -1539,7 +1470,7 @@ UI.Property = class Property extends UI {
             var is_focused = has_focus(input);
             var is_checkbox = input.nodeName === "INPUT" && input.type === "checkbox";
             
-            input.classList.toggle("not-default", !is_default && style_not_default); // !is_focused && 
+            toggle_class(input, "not-default", !is_default && style_not_default); // !is_focused && 
             
             if (is_checkbox) {
                 input.indeterminate = is_indeterminate;
@@ -1560,7 +1491,7 @@ UI.Property = class Property extends UI {
             /* if ((input.nodeName === "INPUT" && (input.type == "date" || input.type == "time")) && is_focused) {
             } else {
             } */
-            if (!is_focused || input._force_update_value) {
+            if (!is_focused || input.nodeName === "SELECT" || input._force_update_value) {
                 set_value(input, value, false);
             }
             input._force_update_value = false;
@@ -1575,8 +1506,8 @@ UI.Property = class Property extends UI {
             input.placeholder = is_indeterminate ? "Multiple values" : this.get_setting("placeholder");
 
             var title = is_indeterminate ? "Multiple values" : this.get_setting("title") || "";
-            if (title) input.setAttribute("title", title);
-            else input.removeAttribute("title");
+            if (title) set_attribute(input, "title", title);
+            else remove_attribute(input, "title");
             
             var valid = disabled || is_indeterminate || (()=>{
                 for (var validator of this.validators) {
@@ -1588,7 +1519,7 @@ UI.Property = class Property extends UI {
             valids.push(valid);
             
             var invalid_class = this.get_setting("invalid_class");
-            if (invalid_class) input.classList.toggle(invalid_class, valid !== true);
+            if (invalid_class) toggle_class(input, invalid_class, valid !== true);
 
             if (valid === false) valid = "Invalid input";
             if (input._last_valid !== valid) {
@@ -1603,8 +1534,6 @@ UI.Property = class Property extends UI {
         });
         
         this.inputs_valid = valids.every(v=>v===true);
-
-        super.update();
     }
 
     add_validator(...cb) {
@@ -1861,7 +1790,7 @@ export function fetch(url) {
     });
 }
 export function parse_style(s) {
-    _div2.setAttribute("style", s);
+    set_attribute(_div2, "style", s);
     var d = {};
     for (var i = 0; i < _div2.style.length; i++) {
         var k = _div2.style[i];
@@ -2063,9 +1992,11 @@ export function open_file_dialog(opts) {
         document.body.removeChild(element);
     });
 }
+/** @param {Element} elem */
 export function empty(elem) {
     while (elem.firstChild) elem.removeChild(elem.firstChild);
 }
+/** @param {HTMLSelectElement} select */
 export function set_select_options(select, options) {
     // if (!Array.isArray(settings)) Object.entries(settings);
     options = fix_options(options)
@@ -2075,12 +2006,13 @@ export function set_select_options(select, options) {
     select.innerHTML = "";
     
     return options.map(o=>{
+        /** @type {HTMLOptionElement} */
         var e = $(`<option></option>`)[0];
         e.innerHTML = o.text;
         if (o.disabled) e.disabled = true;
         if (o.selected) e.selected = true;
         if (o.hidden) e.hidden = true;
-        if (o.class) e.class.forEach(c=>e.classList.add(c))
+        if (o.class) o.class.forEach(c=>e.classList.add(c))
         if (o.style) Object.assign(e.style, o.style);
         if (o.value !== undefined) {
             e.value = o.value;
@@ -2124,7 +2056,6 @@ export function read_file(file, options) {
 export function render_html(htmlString) {
     if (typeof htmlString !== "string") return null;
     _temp_div.innerHTML = htmlString.trim();
-    if (_temp_div.childNodes.length == 1) return _temp_div.childNodes[0];
     return Array.from(_temp_div.childNodes);
 }
 export function get_value(elem) {
@@ -2237,14 +2168,12 @@ export function build_table(datas, opts) {
     return $(html)[0];
 }
 
-export function scroll_percent(e, v) {
+export function scroll_y_percent(e, v) {
     if (v === undefined) {
-        var x = e.scrollLeft / (e.scrollWidth - e.clientWidth);
         var y = e.scrollTop / (e.scrollHeight - e.clientHeight);
-        return [isNaN(x)?1:x, isNaN(y)?1:y];
+        return isNaN(y)?1:y;
     } else {
-        e.scrollLeft = (e.scrollWidth - e.clientWidth) * v[0];
-        e.scrollTop = (e.scrollHeight - e.clientHeight) * v[1];
+        e.scrollTop = (e.scrollHeight - e.clientHeight) * v;
     }
 }
 export function scroll_pos_from_bottom(e, v) {
@@ -2295,11 +2224,13 @@ export function scroll_to(container, el, options) {
     }
     container.scrollBy(scroll_opts);
 }
+/** @param {Element} elem */
 export function set_text(elem, text) {
     text = String(text);
     if (elem.textContent != text) elem.textContent = text;
 }
-const inner_html_prop = "__inner_html_"+utils.random_string(8);
+// const inner_html_prop = "__inner_html_"+utils.random_string(8);
+/** @param {Element} elem */
 export function set_inner_html(elem, html) {
     if (Array.isArray(html)) {
         set_children(elem, html);
@@ -2307,15 +2238,19 @@ export function set_inner_html(elem, html) {
         if (elem.children[0] !== html) elem.prepend(html);
         for (var i = 1; i<elem.children.length; i++) elem.children[i].remove();
     } else {
-        if (elem[inner_html_prop] !== html) {
-            elem[inner_html_prop] = elem.innerHTML = html;
+        if (elem.innerHTML !== html) {
+            elem.innerHTML = html
         }
+        // if (elem[inner_html_prop] !== html) {
+        //     elem[inner_html_prop] = elem.innerHTML = html;
+        // }
         // _temp_div.innerHTML = html; // ugh. Needed for entities like & and whatnot
         // if (elem.innerHTML !== _temp_div.innerHTML) {
         //     elem.innerHTML = html;
         // }
     }
 }
+/** @param {Element} elem */
 export function set_children(elem, new_children) {
     var children = [...elem.children];
     if (children.length && children.every((e,i)=>e === new_children[i])) return;
@@ -2331,28 +2266,63 @@ export function decode_html_entities(str) {
         return String.fromCharCode(s.match(/\d+/)[0]);
     })
 }
+/** @param {Element} elem */
 export function toggle_class(elem, clazz, value) {
     if (elem.classList.contains(clazz) != value) {
         elem.classList.toggle(clazz, value);
     }
 }
+/** @param {Element} elem */
+export function add_class(elem, clazz) {
+    if (!elem.classList.contains(clazz)) elem.classList.add(clazz)
+}
+/** @param {Element} elem */
+export function remove_class(elem, clazz) {
+    if (elem.classList.contains(clazz)) elem.classList.remove(clazz)
+}
+/** @param {Element} elem */
 export function set_attribute(elem, attr, value) {
     if (elem.getAttribute(attr) != value) {
         elem.setAttribute(attr, value);
     }
 }
+/** @param {Element} elem */
+export function remove_attribute(elem, attr) {
+    if (elem.hasAttribute(attr)) elem.removeAttribute(attr);
+}
+/** @param {Element} elem */
 export function toggle_attribute(elem, attr, value) {
     if (elem.hasAttribute(attr) != value) {
         elem.toggleAttribute(attr, value);
     }
 }
+/** @param {Element} elem */
+export function toggle_display(elem, value) {
+    if (elem.style.display === "none" && value) elem.style.display = "";
+    else if (!value) elem.style.display = "none";
+    else elem.style.display = value;
+}
+/** @param {HTMLElement} elem */
 export function set_style_property(elem, prop, value) {
     if (elem.style.getPropertyValue(prop) != value) {
         elem.style.setProperty(prop, value);
     }
 }
+/** @param {HTMLElement} elem */
+export function remove_style_property(elem, prop, value) {
+    if (elem.style.getPropertyValue(prop) !== "") {
+        elem.style.removeProperty(prop);
+    }
+}
+/** @param {HTMLElement} elem */
+export function update_style_properties(elem, props) {
+    for (var k in props) {
+        if (props[k]) set_style_property(elem, k, props[k]);
+        else remove_style_property(elem, k);
+    }
+}
 export function escape_html_entities(text) {
-    return text.replace(/[\u00A0-\u2666<>\&]/g, function(c) {
+    return text.replace(/[\u00A0-\u2666<>\&]/g, (c)=>{
         return '&' + (entity_table[c.charCodeAt(0)] || '#'+c.charCodeAt(0)) + ';';
     });
 }
@@ -2360,7 +2330,6 @@ export function on_click_and_hold(elem, callback) {
     var delay = 0;
     var next_time = 0;
     var is_down = false;
-
     elem.addEventListener("mousedown", function(e){
         next_time = 0;
         delay = 250;
@@ -2369,20 +2338,17 @@ export function on_click_and_hold(elem, callback) {
     document.addEventListener("mouseup", function(e){
         handleMouseUp(e);
     });
-
     function handleMouseDown(e){
         e.preventDefault();
         e.stopPropagation();
         is_down = true;
         requestAnimationFrame(watcher);
     }
-
     function handleMouseUp(e){
         e.preventDefault();
         e.stopPropagation();
         is_down = false;
     }
-
     function watcher(time) {
         if (!is_down) return;
         if (time > next_time) {
@@ -2393,6 +2359,7 @@ export function on_click_and_hold(elem, callback) {
         requestAnimationFrame(watcher);
     }
 }
+/** @param {HTMLSelectElement} elem */
 export function cycle_select(elem, trigger_change = false) {
     var value = elem.value;
     var options = Array.from(elem.options);
@@ -2419,7 +2386,7 @@ export function autosize(elem, min_rows = 3) {
     // if (nearest_scrollable) {
     //     scroll = [nearest_scrollable.scrollLeft, nearest_scrollable.scrollTop];
     // }
-    elem.setAttribute("rows", min_rows);
+    set_attribute(elem, "rows", min_rows);
     elem.style.resize = "none";
     var style = getComputedStyle(elem, null);
     var heightOffset;
@@ -2487,14 +2454,26 @@ export function detect_wrapped_elements(parent, opts) {
         const top = get_top_position(child);
         const prevTop = prev ? get_top_position(prev) : top;
         var is_wrapped = top > prevTop;
-        child.classList.toggle(opts.isSelfWrappedClassName, is_wrapped);
-        if (prev) prev.classList.toggle(opts.nextIsWrappedClassName, is_wrapped);
+        toggle_class(child, opts.isSelfWrappedClassName, is_wrapped);
+        if (prev) toggle_class(prev, opts.nextIsWrappedClassName, is_wrapped);
         if (is_wrapped) any_wrapping = true;
     }
-    parent.classList.toggle(opts.isChildrenWrappedClassName, any_wrapping);
+    toggle_class(parent, opts.isChildrenWrappedClassName, any_wrapping);
     [...parent.children].forEach(e=>{
-        e.classList.toggle(opts.isSiblingWrappedClassName, !e.classList.contains(opts.isSelfWrappedClassName) && any_wrapping)
+        toggle_class(e, opts.isSiblingWrappedClassName, !e.classList.contains(opts.isSelfWrappedClassName) && any_wrapping)
     });
+}
+
+export function load_image(src) {
+    var on_resolve, on_reject, img = new Image();
+    return new Promise((resolve,reject)=>{
+        img.src = src;
+        img.addEventListener("load",on_resolve=()=>resolve(img));
+        img.addEventListener("error",on_reject=()=>reject());
+    }).finally(()=>{
+        img.removeEventListener("load",on_resolve);
+        img.removeEventListener("error",on_reject);
+    })
 }
 
 export async function on_stylesheet_load(elem) {
@@ -2540,22 +2519,24 @@ export function is_scrollbar_visible(elem) {
     return overflow_x || overflow_y;
 }
 
+/** @template T @param {function():T} func @return {Promise<T>} */
 export function debounce_next_frame(func) {
-    var timeout, args, context;
-    var later = function() {
-        timeout = null;
-        func.apply(context, args);
+    var timeout_id, args, context, promise, resolve;
+    var later = ()=>{
+        resolve(func.apply(context, args));
+        promise = null;
     };
     var debounced = function(...p) {
         context = this;
         args = p;
-        if (!timeout) {
-            timeout = requestAnimationFrame(later);
-        }
+		return promise = promise || new Promise(r=>{
+            resolve = r;
+            timeout_id = requestAnimationFrame(later);
+        });
     };
-    debounced.cancel = function() {
-        cancelAnimationFrame(timeout);
-        timeout = args = context = null;
+    debounced.cancel = ()=>{
+        cancelAnimationFrame(timeout_id);
+        promise = null;
     };
     return debounced;
 }
@@ -2570,10 +2551,10 @@ export function uuidb64() {
 /** @param {Element} dst @param {Element} src */
 export function sync_attributes(dst,src) {
     for (var attr of src.attributes) {
-        if (src.getAttribute(attr.name) !== dst.getAttribute(attr.name)) dst.setAttribute(attr.name, attr.value);
+        if (src.getAttribute(attr.name) !== dst.getAttribute(attr.name)) set_attribute(dst, attr.name, attr.value);
     }
     for (var attr of dst.attributes) {
-        if (!src.hasAttribute(attr.name)) dst.removeAttribute(attr.name);
+        if (!src.hasAttribute(attr.name)) remove_attribute(dst, attr.name);
     }
 }
 // ignores text elements and whitespace
